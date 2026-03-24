@@ -1,0 +1,12 @@
+Sample Resume 
+John Doe 
+Email: john.doe@example.com 
+Phone: +1234567890 
+ 
+Skills: Python, JavaScript, React, Node.js, SQL 
+ 
+Experience: 
+Software Engineer at Tech Company (2020-2023) 
+ 
+Education: 
+Bachelor of Science in Computer Science 
