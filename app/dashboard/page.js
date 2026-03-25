@@ -6,528 +6,410 @@ import { useRouter } from 'next/navigation';
 import {
   FileText, Briefcase, Users, TrendingUp,
   ArrowRight, Upload, Zap, CheckCircle2,
-  Sparkles, Star, Activity
+  Sparkles, Clock, ChevronRight, Loader2,
+  AlertCircle, Target, Star
 } from 'lucide-react';
 import { useAuth } from '@/app/lib/hooks/useAuth';
-import { resumeApi, progressApi } from '@/lib/api';
+import { resumeApi, jobsApi, progressApi } from '@/lib/api';
 
-const quickActions = [
-  {
-    label: 'Upload Resume',
-    desc: 'Parse your resume with AI',
-    icon: Upload,
-    href: '/dashboard/resume',
-    gradient: 'from-blue-500 to-indigo-500',
-    shadow: 'shadow-blue-500/25',
-    glow: 'rgba(59,130,246,0.15)',
-    border: 'hover:border-blue-500/40',
-  },
-  {
-    label: 'Find Jobs',
-    desc: 'Match with top opportunities',
-    icon: Briefcase,
-    href: '/dashboard/jobs',
-    gradient: 'from-violet-500 to-purple-500',
-    shadow: 'shadow-violet-500/25',
-    glow: 'rgba(139,92,246,0.15)',
-    border: 'hover:border-violet-500/40',
-  },
-  {
-    label: 'Meet Mentors',
-    desc: 'Connect with industry experts',
-    icon: Users,
-    href: '/dashboard/mentors',
-    gradient: 'from-emerald-500 to-teal-500',
-    shadow: 'shadow-emerald-500/25',
-    glow: 'rgba(16,185,129,0.15)',
-    border: 'hover:border-emerald-500/40',
-  },
-  {
-    label: 'Skill Gap',
-    desc: 'Know what to learn next',
-    icon: TrendingUp,
-    href: '/dashboard/skills',
-    gradient: 'from-orange-500 to-amber-500',
-    shadow: 'shadow-orange-500/25',
-    glow: 'rgba(249,115,22,0.15)',
-    border: 'hover:border-orange-500/40',
-  },
-];
-
-// Animated floating orbs in background
-function DashboardBackground() {
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 600,
-          height: 600,
-          background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)',
-          top: -100,
-          right: -100,
-        }}
-        animate={{ scale: [1, 1.1, 1], rotate: [0, 45, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 500,
-          height: 500,
-          background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)',
-          bottom: -100,
-          left: -100,
-        }}
-        animate={{ scale: [1, 1.15, 1], rotate: [0, -30, 0] }}
-        transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
-      />
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 300,
-          height: 300,
-          background: 'radial-gradient(circle, rgba(16,185,129,0.05) 0%, transparent 70%)',
-          top: '40%',
-          left: '40%',
-        }}
-        animate={{ scale: [1, 1.2, 1], x: [0, 30, 0], y: [0, -20, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 6 }}
-      />
-      {/* Subtle grid */}
-      <div
-        className="absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(99,102,241,1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,1) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px',
-        }}
-      />
-    </div>
-  );
-}
-
-// Animated stat card
-function StatCard({ icon: Icon, label, value, sub, gradient, glow, delay, onClick }) {
+function StatCard({ icon: Icon, label, value, sub, color, bg, border, loading, onClick }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileHover={onClick ? { y: -2, transition: { duration: 0.2 } } : {}}
       onClick={onClick}
-      className="relative p-5 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden cursor-pointer group"
+      className={`relative p-5 rounded-2xl border ${border} ${bg} backdrop-blur-sm overflow-hidden ${onClick ? 'cursor-pointer' : ''} transition-all group`}
     >
-      {/* Animated glow on hover */}
-      <motion.div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-        style={{ background: `radial-gradient(circle at 30% 30%, ${glow}, transparent 65%)` }}
-      />
-
-      {/* Top accent line */}
-      <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r ${gradient} opacity-60`} />
-
-      <div className="relative flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{label}</p>
-          <motion.p
-            className="font-display text-4xl font-bold text-foreground"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: delay + 0.2, type: 'spring', bounce: 0.4 }}
-          >
-            {value}
-          </motion.p>
-          {sub && <p className="text-xs text-muted-foreground mt-2">{sub}</p>}
+      <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${color.replace('text-', 'via-').replace('-400', '-500/40')} to-transparent`} />
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg} border ${border}`}>
+          <Icon className={`w-5 h-5 ${color}`} />
         </div>
-        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg flex-shrink-0`}>
-          <Icon className="w-5 h-5 text-white" />
-        </div>
+        {onClick && (
+          <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        )}
       </div>
+      {loading ? (
+        <div className="space-y-2">
+          <div className="h-7 w-16 bg-secondary/60 rounded animate-pulse" />
+          <div className="h-3 w-24 bg-secondary/40 rounded animate-pulse" />
+        </div>
+      ) : (
+        <>
+          <div className={`font-display text-3xl font-bold ${color} mb-1`}>
+            {value ?? '—'}
+          </div>
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+        </>
+      )}
     </motion.div>
   );
 }
 
-// Animated step
-function StepItem({ icon: Icon, label, done, active, delay }) {
+function SetupStep({ done, label, desc, href, router }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay }}
-      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-        done ? 'opacity-60' : active
-          ? 'bg-primary/10 border border-primary/25 shadow-sm shadow-primary/10'
-          : 'opacity-40'
+    <div
+      onClick={() => !done && router.push(href)}
+      className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+        done
+          ? 'border-emerald-500/20 bg-emerald-500/5'
+          : 'border-border/50 bg-secondary/20 hover:border-primary/30 cursor-pointer hover:bg-primary/5'
       }`}
     >
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-        done ? 'bg-emerald-500/20' : active ? 'bg-primary/20' : 'bg-secondary'
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+        done ? 'bg-emerald-500/20 border border-emerald-500/40' : 'bg-secondary/60 border border-border/60'
       }`}>
         {done
           ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          : <Icon className={`w-4 h-4 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+          : <div className="w-2 h-2 rounded-full bg-muted-foreground/40" />
         }
       </div>
-      <span className={`text-sm font-medium flex-1 ${
-        done ? 'line-through text-muted-foreground' : active ? 'text-foreground' : 'text-muted-foreground'
-      }`}>
-        {label}
-      </span>
-      {active && !done && (
-        <motion.span
-          animate={{ opacity: [1, 0.5, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium"
-        >
-          Next
-        </motion.span>
-      )}
-      {done && <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
-    </motion.div>
-  );
-}
-
-// Animated skill badge
-function SkillBadge({ skill, delay }) {
-  return (
-    <motion.span
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay, type: 'spring', bounce: 0.3 }}
-      whileHover={{ scale: 1.05, transition: { duration: 0.15 } }}
-      className="px-3 py-1.5 rounded-lg bg-secondary/60 border border-border/50 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-primary transition-colors cursor-default"
-    >
-      {skill}
-    </motion.span>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium ${done ? 'text-emerald-400' : 'text-foreground'}`}>{label}</p>
+        <p className="text-xs text-muted-foreground truncate">{desc}</p>
+      </div>
+      {!done && <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+    </div>
   );
 }
 
 export default function DashboardPage() {
   const { getUserId, getName } = useAuth();
   const router = useRouter();
-  const [profile, setProfile] = useState(null);
-  const [progress, setProgress] = useState(null);
+
+  const [resumeData, setResumeData] = useState(null);
+  const [jobsData, setJobsData] = useState(null);
+  const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [time, setTime] = useState('');
 
-  // Greeting based on time
+  const userId = getUserId();
+  const name = getName();
+
   useEffect(() => {
+    if (userId) fetchAll();
+  }, [userId]);
+
+  async function fetchAll() {
+    setLoading(true);
+
+    const [resumeRes, jobsRes, progressRes] = await Promise.allSettled([
+      resumeApi.getProfile(userId),
+      jobsApi.list(userId),
+      progressApi.get(userId),
+    ]);
+
+    if (resumeRes.status === 'fulfilled') setResumeData(resumeRes.value.data);
+    if (jobsRes.status === 'fulfilled') setJobsData(jobsRes.value.data);
+    if (progressRes.status === 'fulfilled') setProgressData(progressRes.value.data);
+
+    setLoading(false);
+  }
+
+  // ── Derived values ─────────────────────────────────
+  const skillCount = resumeData?.profile?.skills?.length ?? resumeData?.skills?.length ?? null;
+  const targetRole = resumeData?.profile?.target_role ?? resumeData?.target_role ?? null;
+
+  const jobCount = (() => {
+    if (!jobsData) return null;
+    if (Array.isArray(jobsData)) return jobsData.length;
+    if (Array.isArray(jobsData?.jobs)) return jobsData.jobs.length;
+    if (Array.isArray(jobsData?.matches)) return jobsData.matches.length;
+    if (typeof jobsData?.total === 'number') return jobsData.total;
+    if (typeof jobsData?.count === 'number') return jobsData.count;
+    return null;
+  })();
+
+  // Mentor count saved after visiting Mentors page
+  const mentorCount = resumeData?.mentor_count ?? null;
+
+  const completionPercent = progressData?.summary?.completion_percent ?? null;
+  const skillGapsTotal = progressData?.summary?.total_skills ?? null;
+  const skillGapsDone = progressData?.summary?.completed ?? null;
+
+  // Setup progress
+  const hasResume = !!skillCount;
+  const hasJobs = jobCount !== null && jobCount > 0;
+  const hasMentors = mentorCount !== null && mentorCount > 0;
+  const hasSkillGap = skillGapsTotal !== null && skillGapsTotal > 0;
+  const setupDone = [hasResume, hasJobs, hasMentors, hasSkillGap].filter(Boolean).length;
+  const setupPercent = Math.round((setupDone / 4) * 100);
+
+  // Strong skills for the cloud
+  const strongSkills = resumeData?.profile?.strong_skills
+    ?? resumeData?.strong_skills
+    ?? resumeData?.profile?.skills?.slice(0, 8)
+    ?? [];
+
+  // What to show as the primary CTA
+  const ctaStep = !hasResume
+    ? { label: 'Upload Your Resume', href: '/dashboard/resume', icon: Upload }
+    : !hasJobs
+    ? { label: 'Find Job Matches', href: '/dashboard/jobs', icon: Briefcase }
+    : !hasMentors
+    ? { label: 'Match with Mentors', href: '/dashboard/mentors', icon: Users }
+    : !hasSkillGap
+    ? { label: 'Run Skill Analysis', href: '/dashboard/skills', icon: Zap }
+    : null;
+
+  const greeting = () => {
     const h = new Date().getHours();
-    if (h < 12) setTime('Good morning');
-    else if (h < 17) setTime('Good afternoon');
-    else setTime('Good evening');
-  }, []);
-
-  useEffect(() => {
-    const userId = getUserId();
-    if (!userId) return;
-    async function fetchData() {
-      try {
-        const [profileRes, progressRes] = await Promise.allSettled([
-          resumeApi.getProfile(userId),
-          progressApi.get(userId),
-        ]);
-        if (profileRes.status === 'fulfilled') setProfile(profileRes.value.data);
-        if (progressRes.status === 'fulfilled') setProgress(progressRes.value.data);
-      } catch (_) {}
-      finally { setLoading(false); }
-    }
-    fetchData();
-  }, []);
-
-  const hasResume = !!profile?.profile;
-  const skills = profile?.profile?.skills || [];
-  const completionPct = progress?.summary?.completion_percent || 0;
-  const totalSkillGaps = progress?.summary?.total_skills || 0;
-  const completedSkills = progress?.summary?.completed || 0;
-
-  const steps = [
-    { icon: Upload, label: 'Upload your resume', done: hasResume },
-    { icon: Briefcase, label: 'Find job matches', done: false },
-    { icon: Users, label: 'Connect with a mentor', done: false },
-    { icon: TrendingUp, label: 'Analyze skill gaps', done: totalSkillGaps > 0 },
-  ];
-  const nextStepIdx = steps.findIndex(s => !s.done);
-
-  const stats = [
-    {
-      icon: FileText,
-      label: 'Resume Skills',
-      value: loading ? '...' : skills.length || '0',
-      sub: hasResume ? 'Skills extracted by AI' : 'Upload resume to start',
-      gradient: 'from-blue-500 to-indigo-500',
-      glow: 'rgba(59,130,246,0.2)',
-      delay: 0.1,
-      onClick: () => router.push('/dashboard/resume'),
-    },
-    {
-      icon: Briefcase,
-      label: 'Job Matches',
-      value: '—',
-      sub: 'Run job scraper first',
-      gradient: 'from-violet-500 to-purple-500',
-      glow: 'rgba(139,92,246,0.2)',
-      delay: 0.18,
-      onClick: () => router.push('/dashboard/jobs'),
-    },
-    {
-      icon: Users,
-      label: 'Mentor Matches',
-      value: '5',
-      sub: 'Ready to connect',
-      gradient: 'from-emerald-500 to-teal-500',
-      glow: 'rgba(16,185,129,0.2)',
-      delay: 0.26,
-      onClick: () => router.push('/dashboard/mentors'),
-    },
-    {
-      icon: TrendingUp,
-      label: 'Skill Progress',
-      value: loading ? '...' : `${completionPct}%`,
-      sub: `${completedSkills} of ${totalSkillGaps} gaps closed`,
-      gradient: 'from-orange-500 to-amber-500',
-      glow: 'rgba(249,115,22,0.2)',
-      delay: 0.34,
-      onClick: () => router.push('/dashboard/skills'),
-    },
-  ];
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   return (
-    <>
-      <DashboardBackground />
+    <div className="max-w-5xl mx-auto space-y-6">
 
-      <div className="relative max-w-6xl mx-auto space-y-8">
-
-        {/* Welcome banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative rounded-3xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden p-8"
-        >
-          {/* Banner glow */}
-          <div
-            className="absolute inset-0 opacity-40"
-            style={{ background: 'radial-gradient(ellipse 60% 80% at 0% 50%, rgba(59,130,246,0.12), transparent)' }}
-          />
-          {/* Animated accent */}
-          <motion.div
-            className="absolute top-0 left-0 right-0 h-px"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.6), rgba(139,92,246,0.6), transparent)' }}
-            animate={{ opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 3, repeat: Infinity }}
-          />
-
-          <div className="relative flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <motion.div
-                  animate={{ rotate: [0, 15, -15, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                >
-                  <Sparkles className="w-4 h-4 text-yellow-400" />
-                </motion.div>
-                <span className="text-sm text-muted-foreground font-medium">{time}</span>
-              </div>
-              <h2 className="font-display text-4xl font-bold mb-2">
-                Hey, {getName()} 👋
-              </h2>
-              <p className="text-muted-foreground text-lg">
-                {hasResume
-                  ? `You have ${skills.length} skills extracted. Keep pushing forward!`
-                  : "Let's get started — upload your resume to unlock everything."}
-              </p>
-            </div>
-
-            <div className="hidden lg:flex items-center gap-4">
-              {!hasResume ? (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => router.push('/dashboard/resume')}
-                  className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-semibold text-sm rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-opacity"
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload Resume
-                  <ArrowRight className="w-4 h-4" />
-                </motion.button>
-              ) : (
-                <div className="flex items-center gap-3 px-5 py-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-400">Resume Analyzed</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="relative mt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Setup Progress</span>
-              <span className="text-xs font-medium text-primary">
-                {steps.filter(s => s.done).length}/{steps.length} steps
-              </span>
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-border overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${(steps.filter(s => s.done).length / steps.length) * 100}%` }}
-                transition={{ delay: 0.8, duration: 1, ease: [0.22, 1, 0.36, 1] }}
-              />
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((s) => <StatCard key={s.label} {...s} />)}
-        </div>
-
-        {/* Middle row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="lg:col-span-2 p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm"
-          >
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="font-display text-lg font-bold">Quick Actions</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Jump into any feature</p>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
-                <Zap className="w-3 h-3 text-yellow-400" />
-                <span className="text-xs text-yellow-400 font-medium">AI Powered</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {quickActions.map((action, i) => (
-                <motion.button
-                  key={action.label}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.45 + i * 0.08 }}
-                  whileHover={{ y: -3, transition: { duration: 0.2 } }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => router.push(action.href)}
-                  className={`group relative flex items-center gap-3 p-4 rounded-xl border border-border/50 ${action.border} bg-secondary/20 hover:bg-secondary/40 transition-all text-left overflow-hidden`}
-                >
-                  <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
-                    style={{ background: `radial-gradient(circle at 20% 50%, ${action.glow}, transparent 65%)` }}
-                  />
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center flex-shrink-0 shadow-lg ${action.shadow} relative z-10`}>
-                    <action.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="relative z-10 flex-1 overflow-hidden">
-                    <p className="text-sm font-semibold text-foreground">{action.label}</p>
-                    <p className="text-xs text-muted-foreground truncate">{action.desc}</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all relative z-10" />
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Setup checklist */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-display text-lg font-bold">Your Journey</h3>
-              <div className="flex items-center gap-1">
-                {steps.map((s, i) => (
-                  <div
-                    key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${
-                      s.done ? 'bg-emerald-400' : i === nextStepIdx ? 'bg-primary w-3' : 'bg-border'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mb-5">
-              {steps.filter(s => s.done).length === 0
-                ? 'Start your career journey'
-                : `${steps.filter(s => s.done).length} of ${steps.length} completed`}
+      {/* Hero greeting */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden"
+      >
+        <div
+          className="absolute inset-0 opacity-30 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 60% 80% at 0% 50%, rgba(59,130,246,0.12), transparent)' }}
+        />
+        <div className="relative flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground font-medium mb-1">
+              {greeting()},
             </p>
-
-            <div className="space-y-2">
-              {steps.map((step, i) => (
-                <StepItem
-                  key={step.label}
-                  icon={step.icon}
-                  label={step.label}
-                  done={step.done}
-                  active={i === nextStepIdx}
-                  delay={0.5 + i * 0.08}
-                />
-              ))}
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.9 }}
-              className="mt-5 pt-4 border-t border-border/40"
-            >
-              <div className="flex items-center gap-2">
-                <Activity className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs text-muted-foreground">
-                  {nextStepIdx === 0
-                    ? 'Upload resume to begin'
-                    : `${steps.length - nextStepIdx} steps remaining`}
+            <h2 className="font-display text-3xl font-bold">
+              {name || 'Student'} 👋
+            </h2>
+            {targetRole && (
+              <div className="flex items-center gap-2 mt-2">
+                <Target className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-blue-400 font-medium">
+                  Target: {targetRole}
                 </span>
               </div>
-            </motion.div>
-          </motion.div>
-        </div>
+            )}
+          </div>
 
-        {/* Skills section — only when resume uploaded */}
-        {hasResume && skills.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden relative"
-          >
-            <div
-              className="absolute inset-0 opacity-30"
-              style={{ background: 'radial-gradient(ellipse 50% 80% at 100% 50%, rgba(59,130,246,0.08), transparent)' }}
-            />
-            <div className="relative flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                  <Star className="w-4 h-4 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-display text-lg font-bold">Your Skills</h3>
-                  <p className="text-xs text-muted-foreground">{skills.length} skills extracted from resume</p>
-                </div>
-              </div>
-              <button
-                onClick={() => router.push('/dashboard/resume')}
-                className="flex items-center gap-1.5 text-xs text-primary hover:opacity-80 transition-opacity font-medium"
-              >
-                View Full Profile <ArrowRight className="w-3 h-3" />
-              </button>
+          {/* Setup progress */}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Setup progress</span>
+              <span className="text-xs font-bold text-foreground">{setupDone}/4</span>
             </div>
-            <div className="relative flex flex-wrap gap-2">
-              {skills.map((skill, i) => (
-                <SkillBadge key={skill} skill={skill} delay={0.55 + i * 0.03} />
+            <div className="w-40 h-2 rounded-full bg-secondary/60 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                initial={{ width: 0 }}
+                animate={{ width: `${setupPercent}%` }}
+                transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+              />
+            </div>
+            {setupPercent === 100 && (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                All systems active
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Stat cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        <StatCard
+          icon={FileText}
+          label="Resume Skills"
+          value={skillCount}
+          sub={skillCount ? 'skills extracted' : 'Upload resume first'}
+          color="text-blue-400"
+          bg="bg-blue-500/8"
+          border="border-blue-500/20"
+          loading={loading}
+          onClick={() => router.push('/dashboard/resume')}
+        />
+        <StatCard
+          icon={Briefcase}
+          label="Job Matches"
+          value={jobCount}
+          sub={jobCount ? 'roles matched' : 'Scrape jobs first'}
+          color="text-violet-400"
+          bg="bg-violet-500/8"
+          border="border-violet-500/20"
+          loading={loading}
+          onClick={() => router.push('/dashboard/jobs')}
+        />
+        <StatCard
+          icon={Users}
+          label="Mentor Matches"
+          value={mentorCount}
+          sub={mentorCount ? 'mentors matched' : 'Visit Mentors page'}
+          color="text-emerald-400"
+          bg="bg-emerald-500/8"
+          border="border-emerald-500/20"
+          loading={loading}
+          onClick={() => router.push('/dashboard/mentors')}
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Skill Progress"
+          value={completionPercent !== null ? `${completionPercent}%` : null}
+          sub={
+            skillGapsTotal
+              ? `${skillGapsDone} of ${skillGapsTotal} gaps closed`
+              : 'Run skill analysis'
+          }
+          color="text-orange-400"
+          bg="bg-orange-500/8"
+          border="border-orange-500/20"
+          loading={loading}
+          onClick={() => router.push('/dashboard/skills')}
+        />
+      </motion.div>
+
+      {/* Main content row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Setup checklist — left 2/3 */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="lg:col-span-2 p-5 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <h3 className="font-display text-base font-bold">Your Setup Journey</h3>
+            <span className="ml-auto text-xs text-muted-foreground">{setupDone}/4 complete</span>
+          </div>
+
+          <div className="space-y-2.5">
+            <SetupStep
+              done={hasResume}
+              label="Upload Resume"
+              desc={hasResume ? `${skillCount} skills extracted` : 'Upload your PDF resume to get started'}
+              href="/dashboard/resume"
+              router={router}
+            />
+            <SetupStep
+              done={hasJobs}
+              label="Find Job Matches"
+              desc={hasJobs ? `${jobCount} jobs matched to your profile` : 'Scrape and match jobs based on your skills'}
+              href="/dashboard/jobs"
+              router={router}
+            />
+            <SetupStep
+              done={hasMentors}
+              label="Match with Mentors"
+              desc={hasMentors ? `${mentorCount} mentors matched` : 'Find mentors aligned with your goals'}
+              href="/dashboard/mentors"
+              router={router}
+            />
+            <SetupStep
+              done={hasSkillGap}
+              label="Run Skill Gap Analysis"
+              desc={hasSkillGap ? `${skillGapsTotal} gaps identified, ${skillGapsDone} closed` : 'Identify what to learn to reach your target role'}
+              href="/dashboard/skills"
+              router={router}
+            />
+          </div>
+
+          {/* CTA button */}
+          {ctaStep && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => router.push(ctaStep.href)}
+              className="w-full mt-4 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+            >
+              <ctaStep.icon className="w-4 h-4" />
+              {ctaStep.label}
+              <ArrowRight className="w-4 h-4" />
+            </motion.button>
+          )}
+
+          {!ctaStep && !loading && (
+            <div className="mt-4 flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold">
+              <CheckCircle2 className="w-4 h-4" />
+              All steps complete — your dashboard is fully active!
+            </div>
+          )}
+        </motion.div>
+
+        {/* Right column */}
+        <div className="space-y-5">
+
+          {/* Skills cloud */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="p-5 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Star className="w-4 h-4 text-yellow-400" />
+              <h3 className="font-display text-sm font-bold">Strong Skills</h3>
+            </div>
+
+            {loading ? (
+              <div className="flex flex-wrap gap-2">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="h-6 w-16 bg-secondary/60 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : strongSkills.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {strongSkills.map((skill, i) => (
+                  <motion.span
+                    key={skill}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + i * 0.04 }}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary font-medium"
+                  >
+                    {skill}
+                  </motion.span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Upload your resume to see your top skills here.
+              </p>
+            )}
+          </motion.div>
+
+          {/* Quick nav */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="p-5 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm"
+          >
+            <h3 className="font-display text-sm font-bold mb-3">Quick Navigate</h3>
+            <div className="space-y-1.5">
+              {[
+                { icon: FileText, label: 'Resume', href: '/dashboard/resume', color: 'text-blue-400' },
+                { icon: Briefcase, label: 'Job Matches', href: '/dashboard/jobs', color: 'text-violet-400' },
+                { icon: Users, label: 'Mentors', href: '/dashboard/mentors', color: 'text-emerald-400' },
+                { icon: TrendingUp, label: 'Skill Gap', href: '/dashboard/skills', color: 'text-orange-400' },
+              ].map(item => (
+                <button
+                  key={item.href}
+                  onClick={() => router.push(item.href)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all group"
+                >
+                  <item.icon className={`w-4 h-4 ${item.color}`} />
+                  {item.label}
+                  <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
               ))}
             </div>
           </motion.div>
-        )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }

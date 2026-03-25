@@ -272,12 +272,10 @@ export default function SkillsPage() {
     setLoading(true);
     setError('');
     try {
-      // Try fetching saved progress first
       const res = await progressApi.get(userId);
       setData(res.data);
     } catch (err) {
       if (err?.response?.status === 404) {
-        // No skill gap yet — show prompt to run analysis
         setData(null);
       } else {
         setError('Failed to load progress. Please try again.');
@@ -296,7 +294,7 @@ export default function SkillsPage() {
     } catch (err) {
       setError(
         err?.response?.data?.detail ||
-        'Analysis failed. Make sure your resume is uploaded and jobs are scraped first.'
+        'Analysis failed. Make sure your resume is uploaded first.'
       );
     } finally {
       setAnalyzing(false);
@@ -307,30 +305,26 @@ export default function SkillsPage() {
     setUpdatingSkill(skill);
     try {
       await progressApi.update(userId, skill, status);
-      // Optimistic update
-      setData(prev => ({
-        ...prev,
-        skills: prev.skills.map(s =>
+      setData(prev => {
+        const updatedSkills = prev.skills.map(s =>
           s.skill === skill ? { ...s, status } : s
-        ),
-        summary: {
-          ...prev.summary,
-          completed: prev.skills.filter(s =>
-            s.skill === skill ? status === 'completed' : s.status === 'completed'
-          ).length,
-          learning: prev.skills.filter(s =>
-            s.skill === skill ? status === 'learning' : s.status === 'learning'
-          ).length,
-          not_started: prev.skills.filter(s =>
-            s.skill === skill ? status === 'not_started' : s.status === 'not_started'
-          ).length,
-          completion_percent: Math.round(
-            (prev.skills.filter(s =>
-              s.skill === skill ? status === 'completed' : s.status === 'completed'
-            ).length / prev.skills.length) * 100
-          ),
-        }
-      }));
+        );
+        const completed = updatedSkills.filter(s => s.status === 'completed').length;
+        const learning = updatedSkills.filter(s => s.status === 'learning').length;
+        const not_started = updatedSkills.filter(s => s.status === 'not_started').length;
+        const total = updatedSkills.length;
+        return {
+          ...prev,
+          skills: updatedSkills,
+          summary: {
+            ...prev.summary,
+            completed,
+            learning,
+            not_started,
+            completion_percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+          }
+        };
+      });
     } catch {
       setError('Failed to update skill status. Try again.');
     } finally {
@@ -350,6 +344,10 @@ export default function SkillsPage() {
 
   const summary = data?.summary;
   const skills = data?.skills || [];
+
+  // ai_summary is the GPT text — data.summary is the stats object
+  // They are different fields intentionally
+  const aiSummaryText = typeof data?.ai_summary === 'string' ? data.ai_summary : null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -466,7 +464,7 @@ export default function SkillsPage() {
           </div>
           <h3 className="font-display text-lg font-bold mb-2">Analyzing your skill gaps...</h3>
           <p className="text-sm text-muted-foreground max-w-sm">
-            GPT-4o is comparing your resume skills against top job requirements. This takes ~15 seconds.
+            GPT-4o is comparing your resume skills against job requirements. This takes ~15 seconds.
           </p>
         </motion.div>
       )}
@@ -483,8 +481,8 @@ export default function SkillsPage() {
           </div>
           <h3 className="font-display text-xl font-bold mb-2">No analysis yet</h3>
           <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-6">
-            Run an AI analysis to identify exactly which skills you need to land your target role,
-            with resources and timelines for each.
+            Run an AI analysis to identify exactly which skills you need to land your
+            target role, with resources and timelines for each.
           </p>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -517,27 +515,9 @@ export default function SkillsPage() {
             {/* Stats */}
             <div className="md:col-span-3 grid grid-cols-3 gap-3">
               {[
-                {
-                  label: 'Not Started',
-                  value: summary?.not_started || 0,
-                  color: 'text-muted-foreground',
-                  bg: 'bg-secondary/40',
-                  border: 'border-border/40',
-                },
-                {
-                  label: 'Learning',
-                  value: summary?.learning || 0,
-                  color: 'text-blue-400',
-                  bg: 'bg-blue-500/10',
-                  border: 'border-blue-500/20',
-                },
-                {
-                  label: 'Completed',
-                  value: summary?.completed || 0,
-                  color: 'text-emerald-400',
-                  bg: 'bg-emerald-500/10',
-                  border: 'border-emerald-500/20',
-                },
+                { label: 'Not Started', value: summary?.not_started || 0, color: 'text-muted-foreground', bg: 'bg-secondary/40', border: 'border-border/40' },
+                { label: 'Learning', value: summary?.learning || 0, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+                { label: 'Completed', value: summary?.completed || 0, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
               ].map((s, i) => (
                 <motion.div
                   key={s.label}
@@ -573,21 +553,21 @@ export default function SkillsPage() {
             </div>
           </motion.div>
 
-         {/* AI Summary */}
-{data.ai_summary && typeof data.ai_summary === 'string' && (
-  <motion.div
-    initial={{ opacity: 0, y: 12 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 }}
-    className="flex items-start gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15"
-  >
-    <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-    <div>
-      <p className="text-xs font-semibold text-primary mb-1">AI Summary</p>
-      <p className="text-sm text-muted-foreground leading-relaxed">{data.ai_summary}</p>
-    </div>
-  </motion.div>
-)}
+          {/* AI Summary — only render if it's a string */}
+          {aiSummaryText && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex items-start gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15"
+            >
+              <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-primary mb-1">AI Summary</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{aiSummaryText}</p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Hint */}
           <motion.div
