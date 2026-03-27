@@ -236,8 +236,8 @@ function JobCard({ job, index }) {
 export default function JobsPage() {
   const { getUserId } = useAuth();
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);   // page load state
-  const [scraping, setScraping] = useState(false); // button click state
+  const [loading, setLoading] = useState(true);
+  const [scraping, setScraping] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState('all');
@@ -245,37 +245,28 @@ export default function JobsPage() {
 
   const userId = getUserId();
 
-  // ── On page load: read saved jobs only — NO agent runs ──────────────
   useEffect(() => {
-    if (userId) loadSavedJobs();
+    if (userId) loadCachedJobs();
   }, [userId]);
 
-  async function loadSavedJobs() {
+  // ── On mount: read saved MATCHED results (with scores) from MongoDB ──
+  async function loadCachedJobs() {
     setLoading(true);
-    setError(''); // always clear error on load
+    setError('');
     try {
-      const res = await jobsApi.list(userId);
-      const data = res.data;
-
-      // Handle all possible response shapes
-      const jobList =
-        Array.isArray(data) ? data :
-        Array.isArray(data?.jobs) ? data.jobs :
-        Array.isArray(data?.matches) ? data.matches :
-        [];
-
-      setJobs(jobList);
-
-      if (jobList.length > 0) {
+      const res = await jobsApi.cached(userId);
+      const matches = Array.isArray(res.data?.matches) ? res.data.matches : [];
+      setJobs(matches);
+      if (matches.length > 0) {
         setStats({
-          total: data?.total_scraped || data?.total || jobList.length,
-          matches: jobList.length,
+          total: res.data?.total_scraped || matches.length,
+          matches: matches.length,
         });
       }
     } catch (err) {
-      // 404 = no jobs saved yet — that's normal, just show empty state
+      // 404 = no matches saved yet — show empty state, no error banner
       if (err?.response?.status !== 404) {
-        console.error('Failed to load saved jobs:', err);
+        console.error('Failed to load cached jobs:', err);
       }
       setJobs([]);
     } finally {
@@ -283,7 +274,7 @@ export default function JobsPage() {
     }
   }
 
-  // ── On button click: run full scrape + match agent ──────────────────
+  // ── On button click: scrape fresh jobs + run full matching agent ─────
   async function handleScrapeAndMatch() {
     if (!userId || scraping) return;
     setScraping(true);
@@ -301,11 +292,12 @@ export default function JobsPage() {
       setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
       const msg = err?.response?.data?.detail || err?.message || '';
-      // Show friendly error based on cause
       if (msg.toLowerCase().includes('resume') || msg.toLowerCase().includes('profile')) {
         setError('No resume found. Please upload your resume first on the Resume page.');
       } else if (msg.toLowerCase().includes('rapidapi') || msg.toLowerCase().includes('jsearch')) {
         setError('Job scraping failed. RapidAPI limit may be reached. Try again in a moment.');
+      } else if (err?.code === 'ECONNABORTED' || msg.toLowerCase().includes('timeout')) {
+        setError('Request timed out — the agent is still running. Wait 30 seconds and refresh the page.');
       } else {
         setError('Job matching failed. Please try again.');
       }
@@ -344,7 +336,6 @@ export default function JobsPage() {
           </p>
         </div>
 
-        {/* Refresh button — only visible when jobs exist */}
         {jobs.length > 0 && (
           <motion.button
             initial={{ opacity: 0, scale: 0.9 }}
@@ -409,22 +400,22 @@ export default function JobsPage() {
             <div>
               <p className="text-sm font-medium text-primary">Running job matching agent...</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Scraping JSearch → Embedding in Qdrant → Ranking with GPT-4o (~20 seconds)
+                Scraping JSearch → Embedding in Qdrant → Ranking with GPT-4o (~30–60 seconds)
               </p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Loading saved jobs */}
-      {loading && (
+      {/* Loading skeleton */}
+      {loading && !scraping && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
         </div>
       )}
 
-      {/* Empty state — no saved jobs yet */}
-      {!loading && jobs.length === 0 && (
+      {/* Empty state */}
+      {!loading && !scraping && jobs.length === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
