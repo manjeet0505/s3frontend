@@ -6,7 +6,7 @@ import {
   Users, Sparkles, Briefcase, MapPin,
   Clock, ChevronRight, Loader2, RefreshCw,
   Send, X, Calendar, BookOpen, AlertCircle,
-  CheckCircle2, Star
+  CheckCircle2, Zap
 } from 'lucide-react';
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import { mentorsApi } from '@/lib/api';
@@ -91,13 +91,10 @@ function SessionRequestModal({ mentor, studentId, studentName, onClose, onSucces
         className="relative w-full max-w-md rounded-3xl border border-border/60 bg-card/95 backdrop-blur-xl shadow-2xl p-6 overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* Glow */}
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 opacity-20 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.6), transparent 70%)' }}
         />
-
-        {/* Header */}
         <div className="relative flex items-start justify-between mb-5">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -118,15 +115,12 @@ function SessionRequestModal({ mentor, studentId, studentName, onClose, onSucces
         </div>
 
         <div className="relative space-y-4">
-          {/* Day selector */}
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">Select Day</label>
             {availability.length === 0 ? (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-secondary/40 border border-border/30">
                 <AlertCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  No availability set by mentor yet. Try another mentor.
-                </p>
+                <p className="text-sm text-muted-foreground">No availability set yet. Try another mentor.</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">
@@ -147,7 +141,6 @@ function SessionRequestModal({ mentor, studentId, studentName, onClose, onSucces
             )}
           </div>
 
-          {/* Time slots */}
           <AnimatePresence>
             {form.day && selectedDayData && (
               <motion.div
@@ -175,7 +168,6 @@ function SessionRequestModal({ mentor, studentId, studentName, onClose, onSucces
             )}
           </AnimatePresence>
 
-          {/* Topic */}
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">
               What do you want to discuss?
@@ -189,7 +181,6 @@ function SessionRequestModal({ mentor, studentId, studentName, onClose, onSucces
             />
           </div>
 
-          {/* Error */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -204,7 +195,6 @@ function SessionRequestModal({ mentor, studentId, studentName, onClose, onSucces
             )}
           </AnimatePresence>
 
-          {/* Submit */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
@@ -241,19 +231,14 @@ function MentorCard({ mentor, index, onRequestSession }) {
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
       className="group relative p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm hover:border-primary/30 transition-all overflow-hidden"
     >
-      {/* Top shimmer */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
-
-      {/* Hover glow */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none"
         style={{ background: 'radial-gradient(circle at 50% 0%, rgba(59,130,246,0.07), transparent 70%)' }}
       />
 
       <div className="relative">
-        {/* Header row */}
         <div className="flex items-start gap-4 mb-4">
-          {/* Avatar */}
           <div className="relative flex-shrink-0">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/25">
               {mentor.name?.[0]?.toUpperCase()}
@@ -262,9 +247,7 @@ function MentorCard({ mentor, index, onRequestSession }) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-display text-lg font-bold text-foreground truncate">
-              {mentor.name}
-            </h3>
+            <h3 className="font-display text-lg font-bold text-foreground truncate">{mentor.name}</h3>
             <div className="flex items-center gap-1.5 mt-0.5">
               <Briefcase className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
               <p className="text-sm text-muted-foreground truncate">{mentor.current_role}</p>
@@ -275,13 +258,11 @@ function MentorCard({ mentor, index, onRequestSession }) {
             </div>
           </div>
 
-          {/* Match score badge */}
           <div className={`flex-shrink-0 px-3 py-1.5 rounded-full border text-sm font-bold ${scoreColor}`}>
             {mentor.match_score}%
           </div>
         </div>
 
-        {/* Domain + experience row */}
         <div className="flex items-center gap-3 mb-4">
           <span className="text-xs px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary font-medium">
             {mentor.domain}
@@ -292,27 +273,20 @@ function MentorCard({ mentor, index, onRequestSession }) {
           </div>
         </div>
 
-        {/* AI Match Reason */}
         {mentor.why_match && (
           <div className="mb-4 p-3.5 rounded-xl bg-blue-500/5 border border-blue-500/15">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
               <span className="text-xs font-semibold text-blue-400">Why this match</span>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-              {mentor.why_match}
-            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{mentor.why_match}</p>
           </div>
         )}
 
-        {/* Skills */}
         {mentor.skills?.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
             {mentor.skills.slice(0, 5).map(skill => (
-              <span
-                key={skill}
-                className="text-xs px-2 py-0.5 rounded-lg bg-secondary/60 border border-border/40 text-muted-foreground"
-              >
+              <span key={skill} className="text-xs px-2 py-0.5 rounded-lg bg-secondary/60 border border-border/40 text-muted-foreground">
                 {skill}
               </span>
             ))}
@@ -324,7 +298,6 @@ function MentorCard({ mentor, index, onRequestSession }) {
           </div>
         )}
 
-        {/* Expand expertise */}
         {mentor.expertise?.length > 0 && (
           <button
             onClick={() => setExpanded(!expanded)}
@@ -346,10 +319,7 @@ function MentorCard({ mentor, index, onRequestSession }) {
             >
               <div className="flex flex-wrap gap-1.5">
                 {mentor.expertise.map(e => (
-                  <span
-                    key={e}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 font-medium"
-                  >
+                  <span key={e} className="text-xs px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 font-medium">
                     {e}
                   </span>
                 ))}
@@ -358,7 +328,6 @@ function MentorCard({ mentor, index, onRequestSession }) {
           )}
         </AnimatePresence>
 
-        {/* Request button */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
@@ -377,30 +346,55 @@ export default function MentorsPage() {
   const { getUserId, getName } = useAuth();
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [selectedMentor, setSelectedMentor] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [cachedAt, setCachedAt] = useState(null);
 
   const userId = getUserId();
   const studentName = getName();
 
+  // On mount — load CACHED results only (fast, no agent)
   useEffect(() => {
-    if (userId) loadMentors();
+    if (userId) loadCached();
   }, [userId]);
 
-  async function loadMentors() {
+  async function loadCached() {
     setLoading(true);
+    setError('');
+    try {
+      const res = await mentorsApi.cached(userId);
+      setMentors(res.data?.mentors || []);
+      setCachedAt(res.data?.cached_at);
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 404) {
+        // No cache yet — show "Find Mentors" CTA, no error
+        setMentors([]);
+      } else {
+        setError('Failed to load mentors. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // On Refresh click — runs full agent, saves results, reloads
+  async function runMatch() {
+    setRefreshing(true);
     setError('');
     try {
       const res = await mentorsApi.match(userId);
       setMentors(res.data?.mentors || []);
+      setCachedAt(new Date().toISOString());
     } catch (err) {
       setError(
         err?.response?.data?.detail ||
-        'Failed to load mentors. Make sure your resume is uploaded first.'
+        'Matching failed. Make sure your resume is uploaded first.'
       );
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -411,10 +405,12 @@ export default function MentorsPage() {
     setTimeout(() => setSuccessMsg(''), 5000);
   }
 
+  const isFirstTime = !loading && !error && mentors.length === 0;
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
 
-      {/* Page Header */}
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -429,17 +425,26 @@ export default function MentorsPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Matched using your resume skills and career goals via vector search + GPT-4o
           </p>
+          {cachedAt && (
+            <p className="text-xs text-muted-foreground mt-1 opacity-60">
+              Last matched: {new Date(cachedAt).toLocaleDateString()}
+            </p>
+          )}
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={loadMentors}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/60 bg-card/40 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-border transition-all disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </motion.button>
+
+        {/* Refresh only visible when matches exist */}
+        {mentors.length > 0 && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={runMatch}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/60 bg-card/40 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-border transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Matching...' : 'Refresh'}
+          </motion.button>
+        )}
       </motion.div>
 
       {/* Success toast */}
@@ -457,7 +462,25 @@ export default function MentorsPage() {
         )}
       </AnimatePresence>
 
-      {/* Error state */}
+      {/* Refreshing banner */}
+      <AnimatePresence>
+        {refreshing && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-primary/8 border border-primary/20"
+          >
+            <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-primary">Running mentor matching agent...</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Qdrant vector search + GPT-4o — takes ~15 seconds</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error */}
       {error && !loading && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -479,10 +502,39 @@ export default function MentorsPage() {
         </div>
       )}
 
+      {/* First time — no cache yet */}
+      {isFirstTime && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center justify-center py-32 text-center"
+        >
+          <div className="w-20 h-20 rounded-3xl bg-blue-500/10 flex items-center justify-center mb-5">
+            <Users className="w-9 h-9 text-blue-400" />
+          </div>
+          <h3 className="font-display text-xl font-bold mb-2">No mentor matches yet</h3>
+          <p className="text-muted-foreground text-sm max-w-sm leading-relaxed mb-6">
+            Run the AI matching agent to find mentors aligned with your skills and career goals.
+            This runs once and results are saved — revisiting this page is instant.
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={runMatch}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/25 hover:opacity-90 transition-all disabled:opacity-50"
+          >
+            {refreshing
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Matching...</>
+              : <><Zap className="w-4 h-4" /> Find My Mentors</>
+            }
+          </motion.button>
+        </motion.div>
+      )}
+
       {/* Results */}
       {!loading && !error && mentors.length > 0 && (
         <>
-          {/* Info badge */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -490,7 +542,7 @@ export default function MentorsPage() {
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-400" />
             <span className="text-xs text-blue-400 font-medium">
-              {mentors.length} mentors matched based on your profile
+              {mentors.length} mentors matched · Click Refresh to re-run
             </span>
           </motion.div>
 
@@ -505,24 +557,6 @@ export default function MentorsPage() {
             ))}
           </div>
         </>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && mentors.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-32 text-center"
-        >
-          <div className="w-20 h-20 rounded-3xl bg-blue-500/10 flex items-center justify-center mb-5">
-            <Users className="w-9 h-9 text-blue-400" />
-          </div>
-          <h3 className="font-display text-xl font-bold mb-2">No mentors found yet</h3>
-          <p className="text-muted-foreground text-sm max-w-sm leading-relaxed">
-            Upload your resume first so we can match you with the right mentors
-            based on your skills and career goals.
-          </p>
-        </motion.div>
       )}
 
       {/* Session Request Modal */}

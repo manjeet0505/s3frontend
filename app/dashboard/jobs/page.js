@@ -11,40 +11,6 @@ import {
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import { jobsApi } from '@/lib/api';
 
-function PageBackground() {
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 500, height: 500,
-          background: 'radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%)',
-          top: -100, right: -50,
-        }}
-        animate={{ scale: [1, 1.1, 1] }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 400, height: 400,
-          background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)',
-          bottom: -80, left: -80,
-        }}
-        animate={{ scale: [1, 1.15, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(99,102,241,1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,1) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px',
-        }}
-      />
-    </div>
-  );
-}
-
 function ScoreRing({ score }) {
   const color =
     score >= 80 ? 'text-emerald-400' :
@@ -59,6 +25,24 @@ function ScoreRing({ score }) {
     <div className={`flex flex-col items-center justify-center w-16 h-16 rounded-full border-2 ${bg} flex-shrink-0`}>
       <span className={`text-lg font-bold ${color}`}>{score}%</span>
       <span className="text-[9px] text-muted-foreground">match</span>
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="p-5 rounded-2xl border border-border/50 bg-card/60 animate-pulse">
+      <div className="flex items-start gap-4 mb-4">
+        <div className="w-11 h-11 rounded-xl bg-secondary/60 flex-shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-secondary/60 rounded w-40" />
+          <div className="h-3 bg-secondary/60 rounded w-24" />
+          <div className="h-3 bg-secondary/60 rounded w-32" />
+        </div>
+        <div className="w-16 h-16 rounded-full bg-secondary/60 flex-shrink-0" />
+      </div>
+      <div className="h-12 bg-secondary/60 rounded-xl mb-3" />
+      <div className="h-8 bg-secondary/60 rounded-xl" />
     </div>
   );
 }
@@ -228,20 +212,6 @@ function JobCard({ job, index }) {
                     </p>
                   </div>
                 )}
-
-                {job.skills_required?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Required Qualifications</p>
-                    <ul className="space-y-1">
-                      {job.skills_required.map((s, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                          <span className="w-1 h-1 rounded-full bg-border mt-1.5 flex-shrink-0" />
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             </motion.div>
           )}
@@ -263,51 +233,11 @@ function JobCard({ job, index }) {
   );
 }
 
-function EmptyState({ onScrape, scraping }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center py-24 text-center max-w-md mx-auto"
-    >
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-xl shadow-violet-500/25 mb-6">
-        <Briefcase className="w-9 h-9 text-white" />
-      </div>
-      <h3 className="font-display text-xl font-bold mb-2">No Job Matches Yet</h3>
-      <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-        Click below to scrape live jobs from JSearch and match them to your profile using AI + Qdrant vector search.
-      </p>
-      <motion.button
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: 0.97 }}
-        onClick={onScrape}
-        disabled={scraping}
-        className="flex items-center gap-2.5 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all disabled:opacity-60"
-      >
-        {scraping
-          ? <Loader2 className="w-5 h-5 animate-spin" />
-          : <Zap className="w-5 h-5" />
-        }
-        {scraping ? 'Finding your matches...' : 'Find My Job Matches'}
-      </motion.button>
-      {scraping && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mt-4 text-xs text-muted-foreground"
-        >
-          Scraping JSearch → Embedding with Qdrant → Ranking with GPT-4o...
-        </motion.p>
-      )}
-    </motion.div>
-  );
-}
-
 export default function JobsPage() {
   const { getUserId } = useAuth();
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [scraping, setScraping] = useState(false);
+  const [loading, setLoading] = useState(true);   // page load state
+  const [scraping, setScraping] = useState(false); // button click state
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState('all');
@@ -315,8 +245,47 @@ export default function JobsPage() {
 
   const userId = getUserId();
 
+  // ── On page load: read saved jobs only — NO agent runs ──────────────
+  useEffect(() => {
+    if (userId) loadSavedJobs();
+  }, [userId]);
+
+  async function loadSavedJobs() {
+    setLoading(true);
+    setError(''); // always clear error on load
+    try {
+      const res = await jobsApi.list(userId);
+      const data = res.data;
+
+      // Handle all possible response shapes
+      const jobList =
+        Array.isArray(data) ? data :
+        Array.isArray(data?.jobs) ? data.jobs :
+        Array.isArray(data?.matches) ? data.matches :
+        [];
+
+      setJobs(jobList);
+
+      if (jobList.length > 0) {
+        setStats({
+          total: data?.total_scraped || data?.total || jobList.length,
+          matches: jobList.length,
+        });
+      }
+    } catch (err) {
+      // 404 = no jobs saved yet — that's normal, just show empty state
+      if (err?.response?.status !== 404) {
+        console.error('Failed to load saved jobs:', err);
+      }
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── On button click: run full scrape + match agent ──────────────────
   async function handleScrapeAndMatch() {
-    if (!userId) return;
+    if (!userId || scraping) return;
     setScraping(true);
     setError('');
     setSuccess('');
@@ -325,41 +294,28 @@ export default function JobsPage() {
       const matches = res.data?.matches || [];
       setJobs(matches);
       setStats({
-        total: res.data?.total_scraped,
+        total: res.data?.total_scraped || matches.length,
         matches: matches.length,
       });
       setSuccess(`Found ${matches.length} job matches for you!`);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Scraping failed. Make sure your resume is uploaded.');
+      const msg = err?.response?.data?.detail || err?.message || '';
+      // Show friendly error based on cause
+      if (msg.toLowerCase().includes('resume') || msg.toLowerCase().includes('profile')) {
+        setError('No resume found. Please upload your resume first on the Resume page.');
+      } else if (msg.toLowerCase().includes('rapidapi') || msg.toLowerCase().includes('jsearch')) {
+        setError('Job scraping failed. RapidAPI limit may be reached. Try again in a moment.');
+      } else {
+        setError('Job matching failed. Please try again.');
+      }
     } finally {
       setScraping(false);
     }
   }
 
-  async function fetchJobs() {
-    if (!userId) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const res = await jobsApi.match(userId);
-      if (res.data?.matches?.length > 0) {
-        setJobs(res.data.matches);
-        setStats({
-          total: res.data.total_jobs_scanned,
-          matches: res.data.matches.length,
-        });
-      }
-    } catch (err) {
-      console.log('No existing matches, showing empty state');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchJobs();
-  }, [userId]);
-
-  const filtered = filter === 'all' ? jobs :
+  const filtered =
+    filter === 'all' ? jobs :
     filter === 'remote' ? jobs.filter(j => j.is_remote) :
     filter === 'top' ? jobs.filter(j => (j.match_score || 0) >= 80) :
     jobs.filter(j => j.employment_type === filter);
@@ -369,163 +325,215 @@ export default function JobsPage() {
     : 0;
 
   return (
-    <>
-      <PageBackground />
+    <div className="relative max-w-6xl mx-auto space-y-6">
 
-      <div className="relative max-w-6xl mx-auto space-y-6">
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-start justify-between"
-        >
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Briefcase className="w-4 h-4 text-violet-400" />
-              <span className="text-sm text-muted-foreground font-medium">Job Matches</span>
-            </div>
-            <h2 className="font-display text-3xl font-bold">Find Your Matches</h2>
-            <p className="text-muted-foreground mt-1">
-              AI-powered job matching using your resume + Qdrant vector search
-            </p>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-start justify-between"
+      >
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Briefcase className="w-4 h-4 text-violet-400" />
+            <span className="text-sm text-muted-foreground font-medium">Job Matches</span>
           </div>
+          <h2 className="font-display text-3xl font-bold">Find Your Matches</h2>
+          <p className="text-muted-foreground mt-1">
+            AI-powered job matching using your resume + Qdrant vector search
+          </p>
+        </div>
 
-          {jobs.length > 0 && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleScrapeAndMatch}
-              disabled={scraping}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/60 bg-secondary/40 hover:bg-secondary/80 text-sm font-medium transition-all disabled:opacity-50"
-            >
-              {scraping
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <RefreshCw className="w-3.5 h-3.5" />
-              }
-              Refresh Matches
-            </motion.button>
-          )}
-        </motion.div>
-
-        <AnimatePresence>
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-medium"
-            >
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-              {success}
-              <button onClick={() => setSuccess('')} className="ml-auto">
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {error}
-              <button onClick={() => setError('')} className="ml-auto">
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              <p className="text-sm text-muted-foreground">Loading job matches...</p>
-            </div>
-          </div>
-        ) : jobs.length === 0 ? (
-          <EmptyState onScrape={handleScrapeAndMatch} scraping={scraping} />
-        ) : (
-          <>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="grid grid-cols-3 gap-4"
-            >
-              {[
-                { icon: Briefcase, label: 'Jobs Scanned', value: stats?.total || '—', color: 'text-violet-400', bg: 'bg-violet-500/10' },
-                { icon: Star, label: 'Top Matches', value: jobs.length, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-                { icon: TrendingUp, label: 'Avg Match Score', value: `${avgScore}%`, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-              ].map((s, i) => (
-                <motion.div
-                  key={s.label}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.07 }}
-                  className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm"
-                >
-                  <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center flex-shrink-0`}>
-                    <s.icon className={`w-4 h-4 ${s.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
-                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="flex items-center gap-2 flex-wrap"
-            >
-              {[
-                { key: 'all', label: 'All Matches' },
-                { key: 'top', label: '🔥 Top Matches (80%+)' },
-                { key: 'remote', label: '🌐 Remote Only' },
-                { key: 'FULLTIME', label: 'Full Time' },
-                { key: 'INTERN', label: 'Internships' },
-              ].map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                    filter === f.key
-                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                      : 'border-border/60 text-muted-foreground hover:text-foreground hover:border-border bg-card/40'
-                  }`}
-                >
-                  {f.label}
-                  {f.key === 'all' && (
-                    <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px]">
-                      {jobs.length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </motion.div>
-
-            {filtered.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground text-sm">
-                No jobs match this filter.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {filtered.map((job, i) => (
-                  <JobCard key={`${job.title}-${job.company}-${i}`} job={job} index={i} />
-                ))}
-              </div>
-            )}
-          </>
+        {/* Refresh button — only visible when jobs exist */}
+        {jobs.length > 0 && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleScrapeAndMatch}
+            disabled={scraping}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/60 bg-secondary/40 hover:bg-secondary/80 text-sm font-medium transition-all disabled:opacity-50"
+          >
+            {scraping
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <RefreshCw className="w-3.5 h-3.5" />
+            }
+            {scraping ? 'Matching...' : 'Refresh Matches'}
+          </motion.button>
         )}
-      </div>
-    </>
+      </motion.div>
+
+      {/* Toasts */}
+      <AnimatePresence>
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-medium"
+          >
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            {success}
+            <button onClick={() => setSuccess('')} className="ml-auto">
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium"
+          >
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {error}
+            <button onClick={() => setError('')} className="ml-auto">
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Scraping progress banner */}
+      <AnimatePresence>
+        {scraping && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-primary/8 border border-primary/20"
+          >
+            <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-primary">Running job matching agent...</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Scraping JSearch → Embedding in Qdrant → Ranking with GPT-4o (~20 seconds)
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Loading saved jobs */}
+      {loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
+        </div>
+      )}
+
+      {/* Empty state — no saved jobs yet */}
+      {!loading && jobs.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center py-24 text-center max-w-md mx-auto"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-xl shadow-violet-500/25 mb-6">
+            <Briefcase className="w-9 h-9 text-white" />
+          </div>
+          <h3 className="font-display text-xl font-bold mb-2">No Job Matches Yet</h3>
+          <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
+            Click below to scrape live jobs from JSearch and match them to your
+            profile using AI + Qdrant vector search. Results are saved so revisiting
+            this page is instant.
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleScrapeAndMatch}
+            disabled={scraping}
+            className="flex items-center gap-2.5 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-xl shadow-lg shadow-primary/25 hover:opacity-90 transition-all disabled:opacity-60"
+          >
+            {scraping
+              ? <Loader2 className="w-5 h-5 animate-spin" />
+              : <Zap className="w-5 h-5" />
+            }
+            {scraping ? 'Finding your matches...' : 'Find My Job Matches'}
+          </motion.button>
+        </motion.div>
+      )}
+
+      {/* Results */}
+      {!loading && jobs.length > 0 && (
+        <>
+          {/* Stats row */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-3 gap-4"
+          >
+            {[
+              { icon: Briefcase, label: 'Jobs Scanned', value: stats?.total || '—', color: 'text-violet-400', bg: 'bg-violet-500/10' },
+              { icon: Star, label: 'Top Matches', value: jobs.length, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+              { icon: TrendingUp, label: 'Avg Match Score', value: `${avgScore}%`, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.07 }}
+                className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm"
+              >
+                <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center flex-shrink-0`}>
+                  <s.icon className={`w-4 h-4 ${s.color}`} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Filters */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-2 flex-wrap"
+          >
+            {[
+              { key: 'all', label: 'All Matches' },
+              { key: 'top', label: '🔥 Top Matches (80%+)' },
+              { key: 'remote', label: '🌐 Remote Only' },
+              { key: 'FULLTIME', label: 'Full Time' },
+              { key: 'INTERN', label: 'Internships' },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                  filter === f.key
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'border-border/60 text-muted-foreground hover:text-foreground hover:border-border bg-card/40'
+                }`}
+              >
+                {f.label}
+                {f.key === 'all' && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px]">
+                    {jobs.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </motion.div>
+
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground text-sm">
+              No jobs match this filter.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filtered.map((job, i) => (
+                <JobCard key={`${job.title}-${job.company}-${i}`} job={job} index={i} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
