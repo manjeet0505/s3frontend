@@ -178,34 +178,38 @@ function SessionRequestModal({ mentor, studentId, studentName, onClose, onSucces
   const selectedDayData = availability.find(a => a.day === form.day);
 
   async function handleSubmit() {
-    if (!form.day || !form.time_slot || !form.topic.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      // FIX: call backend directly via mentorApi — no Next.js route needed
-      await mentorApi.requestSession({
-        mentor_id: mentor.mongo_id || mentor.email,
-        mentor_name: mentor.name,
-        student_id: studentId,
-        student_name: studentName,
-        day: form.day,
-        time_slot: form.time_slot,
-        topic: form.topic,
-      });
-      onSuccess();
-    } catch (err) {
-      setError(
-        err?.response?.data?.detail ||
-        err?.message ||
-        'Failed to send request. Try again.'
-      );
-    } finally {
-      setLoading(false);
-    }
+  if (!form.day || !form.time_slot || !form.topic.trim()) {
+    setError('Please fill in all fields');
+    return;
   }
+  setLoading(true);
+  setError('');
+  try {
+    const payload = {
+      mentor_id: String(mentor.mongo_id || mentor.email || ''),
+      mentor_name: String(mentor.name || ''),
+      student_id: String(studentId || ''),
+      student_name: String(studentName || ''),
+      day: String(form.day),
+      time_slot: String(form.time_slot),
+      topic: String(form.topic.trim()),
+    };
+    await mentorApi.requestSession(payload);
+    onSuccess();
+  } catch (err) {
+    const detail = err?.response?.data?.detail;
+    if (Array.isArray(detail)) {
+      // Pydantic validation error — extract readable message
+      setError(detail.map(d => d.msg).join(', '));
+    } else if (typeof detail === 'string') {
+      setError(detail);
+    } else {
+      setError('Failed to send request. Please try again.');
+    }
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <motion.div

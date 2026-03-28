@@ -5,21 +5,22 @@ import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-mo
 import {
   Users, Calendar, CheckCircle2, Clock,
   Loader2, Star, Inbox, ArrowRight,
-  Zap, TrendingUp, Award, MessageCircle
+  Zap, TrendingUp, Award, MessageCircle,
+  Linkedin, Github, Twitter, Globe,
+  ExternalLink, Sparkles, Activity,
+  ChevronRight, Bell
 } from 'lucide-react';
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import { mentorApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
-// ── Animated mesh background ─────────────────────────
+// ── Mesh Background ───────────────────────────────────
 function MeshBackground() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {/* Deep base */}
       <div className="absolute inset-0"
         style={{ background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(109,40,217,0.18) 0%, transparent 60%)' }}
       />
-      {/* Animated orbs */}
       <motion.div
         className="absolute rounded-full blur-3xl"
         style={{
@@ -50,7 +51,6 @@ function MeshBackground() {
         animate={{ x: [0, 60, 0], y: [0, -40, 0] }}
         transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
       />
-      {/* Grid overlay */}
       <div className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `
@@ -60,7 +60,6 @@ function MeshBackground() {
           backgroundSize: '60px 60px',
         }}
       />
-      {/* Noise grain */}
       <div className="absolute inset-0 opacity-[0.025]"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
@@ -68,7 +67,6 @@ function MeshBackground() {
           backgroundSize: '128px 128px',
         }}
       />
-      {/* Diagonal light streak */}
       <div className="absolute pointer-events-none"
         style={{
           top: '-10%', left: '-10%',
@@ -81,7 +79,37 @@ function MeshBackground() {
   );
 }
 
-// ── Tilt card wrapper ─────────────────────────────────
+// ── Floating Particles ────────────────────────────────
+function Particles() {
+  const particles = Array.from({ length: 18 }, (_, i) => ({
+    id: i,
+    size: Math.random() * 3 + 1,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    duration: Math.random() * 15 + 10,
+    delay: Math.random() * 8,
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full"
+          style={{
+            width: p.size, height: p.size,
+            left: `${p.x}%`, top: `${p.y}%`,
+            background: `rgba(${p.id % 3 === 0 ? '139,92,246' : p.id % 3 === 1 ? '59,130,246' : '236,72,153'}, 0.4)`,
+          }}
+          animate={{ y: [0, -60, 0], opacity: [0, 0.8, 0], scale: [0, 1, 0] }}
+          transition={{ duration: p.duration, repeat: Infinity, delay: p.delay, ease: 'easeInOut' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Tilt Card ─────────────────────────────────────────
 function TiltCard({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
   const x = useMotionValue(0);
@@ -113,23 +141,24 @@ function TiltCard({ children, className = '', delay = 0 }) {
   );
 }
 
-// ── Stat card ─────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, color, bg, border, delay, glow }) {
+// ── Stat Card ─────────────────────────────────────────
+function StatCard({ icon: Icon, label, value, color, bg, border, delay, glowColor }) {
   return (
     <TiltCard delay={delay} className="cursor-default">
-      <div className={`relative p-5 rounded-2xl border ${border} bg-card/50 backdrop-blur-sm overflow-hidden group`}
-        style={{ boxShadow: `0 0 40px ${glow}` }}
+      <div
+        className={`relative p-5 rounded-2xl border ${border} bg-card/50 backdrop-blur-sm overflow-hidden group`}
+        style={{ boxShadow: `0 0 40px ${glowColor}` }}
       >
-        {/* Inner glow on hover */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-          style={{ background: `radial-gradient(circle at 30% 30%, ${glow.replace('0.08', '0.12')}, transparent 60%)` }}
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          style={{ background: `radial-gradient(circle at 30% 30%, ${glowColor}, transparent 60%)` }}
         />
-        {/* Top shimmer line */}
-        <div className="absolute top-0 left-0 right-0 h-px"
-          style={{ background: `linear-gradient(90deg, transparent, ${color.replace('text-', '').includes('violet') ? 'rgba(139,92,246,0.6)' : color.includes('yellow') ? 'rgba(234,179,8,0.6)' : color.includes('emerald') ? 'rgba(16,185,129,0.6)' : 'rgba(59,130,246,0.6)'}, transparent)` }}
+        <div
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${glowColor.replace('0.08', '0.8')}, transparent)` }}
         />
         <div className="relative flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
+          <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center flex-shrink-0 shadow-lg`}>
             <Icon className={`w-6 h-6 ${color}`} />
           </div>
           <div>
@@ -149,66 +178,104 @@ function StatCard({ icon: Icon, label, value, color, bg, border, delay, glow }) 
   );
 }
 
-// ── Floating particles ────────────────────────────────
-function Particles() {
-  const particles = Array.from({ length: 18 }, (_, i) => ({
-    id: i,
-    size: Math.random() * 3 + 1,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    duration: Math.random() * 15 + 10,
-    delay: Math.random() * 8,
-  }));
-
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {particles.map(p => (
-        <motion.div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            width: p.size, height: p.size,
-            left: `${p.x}%`, top: `${p.y}%`,
-            background: `rgba(${p.id % 3 === 0 ? '139,92,246' : p.id % 3 === 1 ? '59,130,246' : '236,72,153'}, 0.4)`,
-          }}
-          animate={{
-            y: [0, -60, 0],
-            opacity: [0, 0.8, 0],
-            scale: [0, 1, 0],
-          }}
-          transition={{
-            duration: p.duration,
-            repeat: Infinity,
-            delay: p.delay,
-            ease: 'easeInOut',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ── Session pill ──────────────────────────────────────
-function SessionPill({ session, color, dotColor }) {
+// ── Session Pill ──────────────────────────────────────
+function SessionPill({ session, gradient, dotColor, index }) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
-      className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 border border-border/30 hover:border-border/60 transition-all group"
+      transition={{ delay: index * 0.06 }}
+      className="flex items-center gap-3 p-3 rounded-xl bg-secondary/20 border border-border/30 hover:border-border/60 hover:bg-secondary/30 transition-all group cursor-default"
     >
-      <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white text-xs font-black flex-shrink-0 shadow-lg`}>
+      <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-black flex-shrink-0 shadow-md`}>
         {session.student_name?.[0]?.toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{session.student_name}</p>
-        <p className="text-xs text-muted-foreground">{session.day} · {session.time_slot}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {session.day} · {session.time_slot}
+        </p>
+        {session.topic && (
+          <p className="text-xs text-muted-foreground/70 truncate mt-0.5 italic">"{session.topic}"</p>
+        )}
       </div>
-      <div className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`} />
+      <div className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0 shadow-sm`} />
     </motion.div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────
+// ── Social Button ─────────────────────────────────────
+function SocialBtn({ url, icon: Icon, label, bg, border, color }) {
+  if (!url) return null;
+  return (
+    <motion.button
+      whileHover={{ scale: 1.08, y: -1 }}
+      whileTap={{ scale: 0.94 }}
+      onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+      style={{ background: bg, border: `1px solid ${border}`, color }}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </motion.button>
+  );
+}
+
+// ── Quick Action Button ───────────────────────────────
+function QuickAction({ icon: Icon, label, sublabel, onClick, gradient, delay }) {
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.97 }}
+      onClick={onClick}
+      className="group relative flex items-center gap-4 p-4 rounded-2xl border border-border/40 bg-card/40 hover:border-border/70 hover:bg-card/60 backdrop-blur-sm transition-all text-left overflow-hidden"
+    >
+      <div
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
+        style={{ background: `radial-gradient(circle at 20% 50%, ${gradient}18, transparent 65%)` }}
+      />
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg relative z-10"
+        style={{ background: `${gradient}22`, border: `1px solid ${gradient}40` }}
+      >
+        <Icon className="w-5 h-5" style={{ color: gradient }} />
+      </div>
+      <div className="relative z-10 flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground truncate">{sublabel}</p>
+      </div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all relative z-10" />
+    </motion.button>
+  );
+}
+
+// ── Expertise Tag ─────────────────────────────────────
+function ExpertiseTag({ tag, index }) {
+  const colors = [
+    { bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.3)', color: '#a78bfa' },
+    { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)', color: '#60a5fa' },
+    { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', color: '#34d399' },
+    { bg: 'rgba(236,72,153,0.12)', border: 'rgba(236,72,153,0.3)', color: '#f472b6' },
+    { bg: 'rgba(234,179,8,0.12)', border: 'rgba(234,179,8,0.3)', color: '#fbbf24' },
+  ];
+  const c = colors[index % colors.length];
+  return (
+    <motion.span
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.4 + index * 0.04, type: 'spring', bounce: 0.3 }}
+      className="text-xs px-3 py-1.5 rounded-lg font-medium"
+      style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}
+    >
+      {tag}
+    </motion.span>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────
 export default function MentorOverviewPage() {
   const { getUserId, getName } = useAuth();
   const router = useRouter();
@@ -220,7 +287,6 @@ export default function MentorOverviewPage() {
   const userId = getUserId();
   const name = getName();
 
-  // Live clock
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
@@ -242,17 +308,19 @@ export default function MentorOverviewPage() {
   const pending = sessions.filter(s => s.status === 'pending');
   const accepted = sessions.filter(s => s.status === 'accepted');
   const declined = sessions.filter(s => s.status === 'declined');
+  const responseRate = sessions.length > 0
+    ? Math.round(((accepted.length + declined.length) / sessions.length) * 100)
+    : 0;
 
-  const greeting = time.getHours() < 12 ? 'Good morning' : time.getHours() < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = time.getHours() < 12 ? 'Good morning'
+    : time.getHours() < 17 ? 'Good afternoon'
+    : 'Good evening';
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-40">
         <div className="flex flex-col items-center gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          >
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
             <Loader2 className="w-8 h-8 text-violet-400" />
           </motion.div>
           <p className="text-sm text-muted-foreground">Summoning your dashboard...</p>
@@ -266,11 +334,10 @@ export default function MentorOverviewPage() {
       <MeshBackground />
       <Particles />
 
-      <div className="relative max-w-6xl mx-auto space-y-8">
+      <div className="relative max-w-6xl mx-auto space-y-8 pb-8">
 
-        {/* ── Hero header ── */}
+        {/* ── Hero Header ── */}
         <div className="relative">
-          {/* Time badge */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -284,11 +351,7 @@ export default function MentorOverviewPage() {
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <h1 className="font-black text-4xl lg:text-5xl tracking-tight">
               <span className="text-muted-foreground text-2xl font-medium block mb-1">{greeting},</span>
               <span
@@ -299,68 +362,86 @@ export default function MentorOverviewPage() {
               </span>
             </h1>
             {pending.length > 0 ? (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-muted-foreground mt-2 text-base"
-              >
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-muted-foreground mt-2 text-base flex items-center gap-2">
+                <Bell className="w-4 h-4 text-yellow-400" />
                 You have{' '}
                 <span className="text-yellow-400 font-bold">{pending.length} pending request{pending.length > 1 ? 's' : ''}</span>
                 {' '}waiting for your response
               </motion.p>
             ) : (
-              <p className="text-muted-foreground mt-2 text-base">
-                Your mentoring dashboard is up to date ✨
-              </p>
+              <p className="text-muted-foreground mt-2 text-base">Your mentoring dashboard is up to date ✨</p>
             )}
           </motion.div>
         </div>
 
-        {/* ── Profile hero card ── */}
+        {/* ── Profile Hero Card ── */}
         {profile && (
           <TiltCard delay={0.15}>
-            <div className="relative p-7 rounded-3xl border border-violet-500/20 overflow-hidden"
+            <div
+              className="relative p-7 rounded-3xl border border-violet-500/20 overflow-hidden"
               style={{
                 background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(79,70,229,0.05) 50%, rgba(59,130,246,0.05) 100%)',
                 boxShadow: '0 0 60px rgba(139,92,246,0.1), inset 0 1px 0 rgba(255,255,255,0.05)',
               }}
             >
-              {/* Decorative arc */}
-              <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full border border-violet-500/10"
+              {/* Decorative arcs */}
+              <div
+                className="absolute -top-20 -right-20 w-64 h-64 rounded-full border border-violet-500/10"
                 style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)' }}
               />
               <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full border border-violet-500/15" />
+              <div
+                className="absolute top-0 left-0 right-0 h-px"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.6), rgba(59,130,246,0.4), transparent)' }}
+              />
 
-              <div className="relative flex items-center gap-6">
-                {/* Avatar with ring */}
+              <div className="relative flex items-start gap-6">
+
+                {/* ── Avatar ── */}
                 <div className="relative flex-shrink-0">
                   <motion.div
-                    className="absolute inset-0 rounded-2xl"
-                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.6), rgba(59,130,246,0.6))' }}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    className="absolute -inset-1 rounded-2xl opacity-60"
+                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.5), rgba(59,130,246,0.5))' }}
+                    animate={{ opacity: [0.4, 0.8, 0.4] }}
                     transition={{ duration: 3, repeat: Infinity }}
                   />
-                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-black text-2xl shadow-2xl shadow-violet-500/30 m-0.5">
-                    {name?.[0]?.toUpperCase()}
-                  </div>
+                  {profile.photo ? (
+                    <img
+                      src={profile.photo}
+                      alt={name}
+                      className="relative w-20 h-20 rounded-2xl object-cover shadow-2xl shadow-violet-500/30"
+                      style={{ margin: '2px' }}
+                    />
+                  ) : (
+                    <div
+                      className="relative w-20 h-20 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-2xl shadow-violet-500/30"
+                      style={{
+                        margin: '2px',
+                        background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                      }}
+                    >
+                      {name?.[0]?.toUpperCase()}
+                    </div>
+                  )}
                   {/* Online dot */}
                   <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-background shadow-lg shadow-emerald-400/50" />
                 </div>
 
+                {/* ── Info ── */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
                       <h2 className="font-black text-2xl text-foreground">{name}</h2>
-                      <p className="text-violet-400 font-semibold mt-0.5">
+                      <p className="font-semibold mt-0.5" style={{ color: '#a78bfa' }}>
                         {profile.current_role}
                         <span className="text-muted-foreground font-normal"> at </span>
-                        {profile.current_company}
+                        <span className="text-foreground">{profile.current_company}</span>
                       </p>
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2 max-w-lg">{profile.bio}</p>
                     </div>
-                    <div className="hidden lg:flex flex-col items-end gap-2 flex-shrink-0">
-                      <span className="px-4 py-1.5 rounded-full text-xs font-bold"
+                    {/* Domain + exp badges */}
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <span
+                        className="px-4 py-1.5 rounded-full text-xs font-bold"
                         style={{
                           background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(79,70,229,0.2))',
                           border: '1px solid rgba(139,92,246,0.3)',
@@ -371,15 +452,25 @@ export default function MentorOverviewPage() {
                       </span>
                       <div className="flex items-center gap-1.5">
                         <Award className="w-3.5 h-3.5 text-yellow-400" />
-                        <span className="text-xs text-muted-foreground">{profile.years_experience} years experience</span>
+                        <span className="text-xs text-muted-foreground">{profile.years_experience} yrs experience</span>
                       </div>
                     </div>
                   </div>
 
+                  {/* Bio */}
+                  {profile.bio && (
+                    <p
+                      className="text-sm text-muted-foreground mt-3 leading-relaxed line-clamp-2 max-w-xl italic border-l-2 pl-3"
+                      style={{ borderColor: 'rgba(139,92,246,0.3)' }}
+                    >
+                      "{profile.bio}"
+                    </p>
+                  )}
+
                   {/* Skills */}
                   {profile.skills?.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-4">
-                      {profile.skills.slice(0, 6).map((s, i) => (
+                      {profile.skills.slice(0, 7).map((s, i) => (
                         <motion.span
                           key={s}
                           initial={{ opacity: 0, scale: 0.8 }}
@@ -395,13 +486,28 @@ export default function MentorOverviewPage() {
                           {s}
                         </motion.span>
                       ))}
-                      {profile.skills.length > 6 && (
-                        <span className="text-xs px-3 py-1 rounded-lg text-muted-foreground"
+                      {profile.skills.length > 7 && (
+                        <span
+                          className="text-xs px-3 py-1 rounded-lg text-muted-foreground"
                           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                         >
-                          +{profile.skills.length - 6} more
+                          +{profile.skills.length - 7} more
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {/* Social links */}
+                  {(profile.linkedin || profile.github || profile.twitter || profile.website) && (
+                    <div className="flex items-center gap-2 mt-4 flex-wrap">
+                      <SocialBtn url={profile.linkedin} icon={Linkedin} label="LinkedIn"
+                        bg="rgba(59,130,246,0.1)" border="rgba(59,130,246,0.3)" color="#60a5fa" />
+                      <SocialBtn url={profile.github} icon={Github} label="GitHub"
+                        bg="rgba(139,92,246,0.1)" border="rgba(139,92,246,0.3)" color="#a78bfa" />
+                      <SocialBtn url={profile.twitter} icon={Twitter} label="Twitter"
+                        bg="rgba(14,165,233,0.1)" border="rgba(14,165,233,0.3)" color="#38bdf8" />
+                      <SocialBtn url={profile.website} icon={Globe} label="Website"
+                        bg="rgba(16,185,129,0.1)" border="rgba(16,185,129,0.3)" color="#34d399" />
                     </div>
                   )}
                 </div>
@@ -410,40 +516,35 @@ export default function MentorOverviewPage() {
           </TiltCard>
         )}
 
-        {/* ── Stats grid ── */}
+        {/* ── Stats Grid ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Inbox} label="Total Requests" value={sessions.length}
             color="text-violet-400" bg="bg-violet-500/10" border="border-violet-500/20"
-            glow="rgba(139,92,246,0.08)" delay={0.2}
-          />
+            glowColor="rgba(139,92,246,0.08)" delay={0.2} />
           <StatCard icon={Clock} label="Pending" value={pending.length}
             color="text-yellow-400" bg="bg-yellow-500/10" border="border-yellow-500/20"
-            glow="rgba(234,179,8,0.08)" delay={0.25}
-          />
+            glowColor="rgba(234,179,8,0.08)" delay={0.25} />
           <StatCard icon={CheckCircle2} label="Accepted" value={accepted.length}
             color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20"
-            glow="rgba(16,185,129,0.08)" delay={0.3}
-          />
+            glowColor="rgba(16,185,129,0.08)" delay={0.3} />
           <StatCard icon={Star} label="Expertise" value={profile?.expertise?.length || 0}
             color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20"
-            glow="rgba(59,130,246,0.08)" delay={0.35}
-          />
+            glowColor="rgba(59,130,246,0.08)" delay={0.35} />
         </div>
 
-        {/* ── Two column panels ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* ── Middle Grid: Sessions + Quick Actions ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* Pending requests panel */}
-          <TiltCard delay={0.4}>
-            <div className="relative p-6 rounded-2xl border border-yellow-500/15 bg-card/50 backdrop-blur-sm overflow-hidden h-full"
+          {/* Pending Requests */}
+          <TiltCard delay={0.4} className="lg:col-span-1">
+            <div
+              className="relative p-6 rounded-2xl border border-yellow-500/15 bg-card/50 backdrop-blur-sm overflow-hidden h-full"
               style={{ boxShadow: '0 0 30px rgba(234,179,8,0.05)' }}
             >
               <div className="absolute top-0 left-0 right-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(234,179,8,0.5), transparent)' }}
-              />
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(234,179,8,0.6), transparent)' }} />
               <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(234,179,8,0.06), transparent 70%)' }}
-              />
+                style={{ background: 'radial-gradient(circle, rgba(234,179,8,0.06), transparent 70%)' }} />
 
               <div className="relative flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
@@ -451,14 +552,14 @@ export default function MentorOverviewPage() {
                     <Inbox className="w-4 h-4 text-yellow-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-foreground">Pending Requests</h3>
-                    <p className="text-xs text-muted-foreground">{pending.length} awaiting response</p>
+                    <h3 className="font-bold text-foreground">Pending</h3>
+                    <p className="text-xs text-muted-foreground">{pending.length} awaiting</p>
                   </div>
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.05, x: 2 }}
                   onClick={() => router.push('/mentor-dashboard/requests')}
-                  className="flex items-center gap-1.5 text-xs text-yellow-400 hover:text-yellow-300 transition-colors font-medium"
+                  className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 transition-colors font-medium"
                 >
                   View all <ArrowRight className="w-3 h-3" />
                 </motion.button>
@@ -476,26 +577,33 @@ export default function MentorOverviewPage() {
                 <div className="space-y-2.5">
                   {pending.slice(0, 4).map((s, i) => (
                     <SessionPill key={i} session={s}
-                      color="from-yellow-500 to-orange-500"
-                      dotColor="bg-yellow-400"
+                      gradient="from-yellow-500 to-orange-500"
+                      dotColor="bg-yellow-400" index={i}
                     />
                   ))}
+                  {pending.length > 4 && (
+                    <button
+                      onClick={() => router.push('/mentor-dashboard/requests')}
+                      className="w-full text-xs text-center text-muted-foreground hover:text-foreground transition-colors py-2"
+                    >
+                      +{pending.length - 4} more requests
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           </TiltCard>
 
-          {/* Upcoming sessions panel */}
-          <TiltCard delay={0.45}>
-            <div className="relative p-6 rounded-2xl border border-emerald-500/15 bg-card/50 backdrop-blur-sm overflow-hidden h-full"
+          {/* Upcoming Sessions */}
+          <TiltCard delay={0.45} className="lg:col-span-1">
+            <div
+              className="relative p-6 rounded-2xl border border-emerald-500/15 bg-card/50 backdrop-blur-sm overflow-hidden h-full"
               style={{ boxShadow: '0 0 30px rgba(16,185,129,0.05)' }}
             >
               <div className="absolute top-0 left-0 right-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(16,185,129,0.5), transparent)' }}
-              />
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)' }} />
               <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.06), transparent 70%)' }}
-              />
+                style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.06), transparent 70%)' }} />
 
               <div className="relative flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
@@ -503,14 +611,14 @@ export default function MentorOverviewPage() {
                     <Calendar className="w-4 h-4 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-foreground">Upcoming Sessions</h3>
+                    <h3 className="font-bold text-foreground">Upcoming</h3>
                     <p className="text-xs text-muted-foreground">{accepted.length} confirmed</p>
                   </div>
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.05, x: 2 }}
                   onClick={() => router.push('/mentor-dashboard/schedule')}
-                  className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+                  className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
                 >
                   View all <ArrowRight className="w-3 h-3" />
                 </motion.button>
@@ -528,39 +636,146 @@ export default function MentorOverviewPage() {
                 <div className="space-y-2.5">
                   {accepted.slice(0, 4).map((s, i) => (
                     <SessionPill key={i} session={s}
-                      color="from-emerald-500 to-teal-500"
-                      dotColor="bg-emerald-400"
+                      gradient="from-emerald-500 to-teal-500"
+                      dotColor="bg-emerald-400" index={i}
                     />
                   ))}
+                  {accepted.length > 4 && (
+                    <button
+                      onClick={() => router.push('/mentor-dashboard/schedule')}
+                      className="w-full text-xs text-center text-muted-foreground hover:text-foreground transition-colors py-2"
+                    >
+                      +{accepted.length - 4} more sessions
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           </TiltCard>
+
+          {/* Quick Actions */}
+          <TiltCard delay={0.5} className="lg:col-span-1">
+            <div className="relative p-6 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden h-full">
+              <div className="absolute top-0 left-0 right-0 h-px"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.4), rgba(59,130,246,0.4), transparent)' }} />
+
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground">Quick Actions</h3>
+                  <p className="text-xs text-muted-foreground">Jump to any section</p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                <QuickAction
+                  icon={Inbox} label="Review Requests" sublabel={`${pending.length} pending`}
+                  onClick={() => router.push('/mentor-dashboard/requests')}
+                  gradient="#eab308" delay={0.52}
+                />
+                <QuickAction
+                  icon={Calendar} label="My Schedule" sublabel={`${accepted.length} sessions booked`}
+                  onClick={() => router.push('/mentor-dashboard/schedule')}
+                  gradient="#10b981" delay={0.55}
+                />
+                <QuickAction
+                  icon={Users} label="My Students" sublabel="View all student profiles"
+                  onClick={() => router.push('/mentor-dashboard/students')}
+                  gradient="#3b82f6" delay={0.58}
+                />
+                <QuickAction
+                  icon={Star} label="Edit Profile" sublabel="Update skills & availability"
+                  onClick={() => router.push('/mentor-dashboard/profile')}
+                  gradient="#a78bfa" delay={0.61}
+                />
+              </div>
+            </div>
+          </TiltCard>
         </div>
 
-        {/* ── Bottom activity strip ── */}
-        <TiltCard delay={0.5}>
-          <div className="relative p-6 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden">
+        {/* ── Expertise Tags ── */}
+        {profile?.expertise?.length > 0 && (
+          <TiltCard delay={0.55}>
+            <div
+              className="relative p-6 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden"
+              style={{ boxShadow: '0 0 30px rgba(139,92,246,0.05)' }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-px"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.5), rgba(236,72,153,0.3), transparent)' }} />
+              <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full"
+                style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.05), transparent 70%)' }} />
+
+              <div className="relative flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground">Your Expertise</h3>
+                  <p className="text-xs text-muted-foreground">{profile.expertise.length} areas · used for student matching</p>
+                </div>
+              </div>
+
+              <div className="relative flex flex-wrap gap-2">
+                {profile.expertise.map((tag, i) => (
+                  <ExpertiseTag key={tag} tag={tag} index={i} />
+                ))}
+              </div>
+            </div>
+          </TiltCard>
+        )}
+
+        {/* ── Bottom Analytics Strip ── */}
+        <TiltCard delay={0.6}>
+          <div
+            className="relative p-6 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden"
+          >
             <div className="absolute top-0 left-0 right-0 h-px"
-              style={{ background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.4), rgba(59,130,246,0.4), transparent)' }}
-            />
-            <div className="flex items-center justify-between">
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.4), rgba(59,130,246,0.4), transparent)' }} />
+
+            <div className="flex items-center gap-2 mb-5">
+              <Activity className="w-4 h-4 text-violet-400" />
+              <h3 className="font-bold text-foreground text-sm">Activity Overview</h3>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { icon: TrendingUp, label: 'Response Rate', value: sessions.length > 0 ? `${Math.round(((accepted.length + declined.length) / sessions.length) * 100)}%` : '—', color: 'text-violet-400' },
-                { icon: Users, label: 'Students Helped', value: accepted.length, color: 'text-blue-400' },
-                { icon: MessageCircle, label: 'Expertise Tags', value: profile?.expertise?.length || 0, color: 'text-pink-400' },
-                { icon: Award, label: 'Years Active', value: profile?.years_experience || 0, color: 'text-yellow-400' },
+                {
+                  icon: TrendingUp, label: 'Response Rate',
+                  value: sessions.length > 0 ? `${responseRate}%` : '—',
+                  color: 'text-violet-400', glow: 'rgba(139,92,246,0.15)',
+                },
+                {
+                  icon: Users, label: 'Students Helped',
+                  value: accepted.length,
+                  color: 'text-blue-400', glow: 'rgba(59,130,246,0.15)',
+                },
+                {
+                  icon: MessageCircle, label: 'Topics Covered',
+                  value: profile?.expertise?.length || 0,
+                  color: 'text-pink-400', glow: 'rgba(236,72,153,0.15)',
+                },
+                {
+                  icon: Award, label: 'Years Experience',
+                  value: profile?.years_experience || 0,
+                  color: 'text-yellow-400', glow: 'rgba(234,179,8,0.15)',
+                },
               ].map((item, i) => (
                 <motion.div
                   key={item.label}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.55 + i * 0.06 }}
-                  className="flex flex-col items-center gap-1.5 flex-1"
+                  transition={{ delay: 0.65 + i * 0.07 }}
+                  className="relative flex flex-col items-center gap-2 p-4 rounded-xl border border-border/30 bg-secondary/20 hover:bg-secondary/30 transition-all group overflow-hidden"
                 >
-                  <item.icon className={`w-4 h-4 ${item.color}`} />
-                  <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
-                  <p className="text-xs text-muted-foreground text-center">{item.label}</p>
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ background: `radial-gradient(circle at 50% 0%, ${item.glow}, transparent 70%)` }}
+                  />
+                  <item.icon className={`w-4 h-4 ${item.color} relative z-10`} />
+                  <p className={`text-2xl font-black ${item.color} relative z-10`}>{item.value}</p>
+                  <p className="text-xs text-muted-foreground text-center relative z-10">{item.label}</p>
                 </motion.div>
               ))}
             </div>
