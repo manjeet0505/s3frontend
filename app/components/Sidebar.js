@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Sparkles,
   LogOut,
+  UserCircle
 } from 'lucide-react';
 
 const navItems = [
@@ -41,6 +42,11 @@ const navItems = [
     label: 'Skill Gap',
     href: '/dashboard/skills',
     icon: TrendingUp,
+  },
+  { 
+    label: 'Profile', 
+    href: '/dashboard/profile',
+     icon: UserCircle 
   },
 ];
 
