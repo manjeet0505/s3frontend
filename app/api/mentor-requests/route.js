@@ -7,8 +7,8 @@ export async function POST(request) {
     const body = await request.json();
 
     const {
-      mentor_id,      // mongo_id from Qdrant payload — matches mentor's JWT userId
-      mentor_user_id, // same as mentor_id, stored as separate field for query flexibility
+      mentor_id,
+      mentor_user_id,
       mentor_name,
       student_id,
       student_name,
@@ -20,24 +20,52 @@ export async function POST(request) {
     // Validate required fields
     if (!mentor_id || !student_id || !day || !time_slot || !topic) {
       return NextResponse.json(
-        { message: 'Missing required fields: mentor_id, student_id, day, time_slot, topic' },
+        { message: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Forward to FastAPI backend
+    // ── Fetch student AI profile to attach to session ──────────────────
+    let student_profile = null;
+    try {
+      const profileRes = await fetch(
+        `${BACKEND_URL}/resume/profile/${student_id}`
+      );
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+        // Extract only what mentor needs to see
+        const p = profileData?.profile || profileData || {};
+        student_profile = {
+          name: p.name || student_name,
+          target_role: p.target_role || p.domain || '',
+          experience_level: p.experience_level || '',
+          skills: (p.skills || []).slice(0, 15), // top 15 skills
+          summary: p.summary || p.bio || '',
+          education: p.education?.[0] || null,  // most recent education
+          strong_skills: p.strong_skills || [],
+          career_goals: p.career_goals || '',
+          ai_profile_score: profileData?.ai_profile_score || 0,
+        };
+      }
+    } catch (profileErr) {
+      // Non-blocking — session still saves even if profile fetch fails
+      console.warn('[mentor-requests] Could not fetch student profile:', profileErr.message);
+    }
+
+    // ── Forward to FastAPI backend with profile attached ───────────────
     const res = await fetch(`${BACKEND_URL}/mentor/session/request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         mentor_id,
-        mentor_user_id: mentor_user_id || mentor_id, // always save both
+        mentor_user_id: mentor_user_id || mentor_id,
         mentor_name,
         student_id,
         student_name,
         day,
         time_slot,
         topic,
+        student_profile, // ← full AI profile attached
       }),
     });
 
@@ -57,7 +85,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('[mentor-requests] Error:', error);
+    console.error('[mentor-requests POST] Error:', error);
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }

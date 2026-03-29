@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Inbox, CheckCircle2, XCircle, Clock,
   Loader2, ChevronDown, ChevronUp,
-  Video, User, Calendar, MessageSquare,
-  AlertCircle, RefreshCw, Filter
+  Video, Calendar, MessageSquare,
+  AlertCircle, RefreshCw, User,
+  Code, Target, GraduationCap,
+  Star, Sparkles, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import { mentorApi } from '@/lib/api';
@@ -51,10 +53,124 @@ const statusConfig = {
   },
 };
 
+// ── Student Profile Card (shown inside request) ───────
+function StudentProfileCard({ profile }) {
+  if (!profile) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="overflow-hidden"
+    >
+      <div className="mt-3 p-4 rounded-xl bg-secondary/30 border border-border/30 space-y-3">
+        {/* Header */}
+        <div className="flex items-center gap-2 pb-2 border-b border-border/30">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-semibold text-primary">Student AI Profile</span>
+          {profile.ai_profile_score > 0 && (
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold">
+              Score: {profile.ai_profile_score}/100
+            </span>
+          )}
+        </div>
+
+        {/* Target role + experience */}
+        <div className="grid grid-cols-2 gap-2">
+          {profile.target_role && (
+            <div className="flex items-center gap-2">
+              <Target className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Target Role</p>
+                <p className="text-xs font-semibold text-foreground">{profile.target_role}</p>
+              </div>
+            </div>
+          )}
+          {profile.experience_level && (
+            <div className="flex items-center gap-2">
+              <User className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Level</p>
+                <p className="text-xs font-semibold text-foreground">{profile.experience_level}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Summary */}
+        {profile.summary && (
+          <div className="flex items-start gap-2">
+            <MessageSquare className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 italic">
+              "{profile.summary}"
+            </p>
+          </div>
+        )}
+
+        {/* Skills */}
+        {profile.skills?.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Code className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
+                Skills ({profile.skills.length})
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {profile.skills.slice(0, 10).map(skill => (
+                <span
+                  key={skill}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium"
+                >
+                  {skill}
+                </span>
+              ))}
+              {profile.skills.length > 10 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-secondary/60 text-muted-foreground">
+                  +{profile.skills.length - 10} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Career goals */}
+        {profile.career_goals && (
+          <div className="flex items-start gap-2">
+            <Star className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-0.5">Career Goals</p>
+              <p className="text-xs text-foreground leading-relaxed">{profile.career_goals}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Education */}
+        {profile.education && (
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-muted-foreground">Education</p>
+              <p className="text-xs font-medium text-foreground">
+                {profile.education.degree || profile.education.qualification || 'Degree'} —{' '}
+                {profile.education.institution || profile.education.school || ''}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Request Card ──────────────────────────────────────
 function RequestCard({ session, onAccept, onDecline, responding }) {
   const [expanded, setExpanded] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [meetingLink, setMeetingLink] = useState('');
   const status = statusConfig[session.status] || statusConfig.pending;
+  const hasProfile = !!session.student_profile;
 
   return (
     <motion.div
@@ -62,7 +178,7 @@ function RequestCard({ session, onAccept, onDecline, responding }) {
       animate={{ opacity: 1, y: 0 }}
       className="relative rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden"
     >
-      {/* Top line */}
+      {/* Top accent line */}
       <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${
         session.status === 'accepted' ? 'via-emerald-500/50'
         : session.status === 'declined' ? 'via-red-500/50'
@@ -72,19 +188,33 @@ function RequestCard({ session, onAccept, onDecline, responding }) {
       <div className="p-5">
         {/* Header row */}
         <div className="flex items-start gap-4 mb-4">
-          {/* Avatar */}
+          {/* Student avatar */}
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-lg shadow-violet-500/20">
             {session.student_name?.[0]?.toUpperCase() || 'S'}
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground text-base">{session.student_name}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-foreground text-base">{session.student_name}</h3>
+              {/* Profile badge */}
+              {hasProfile && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-semibold">
+                  Profile attached
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Calendar className="w-3.5 h-3.5" />
                 {session.day} at {session.time_slot}
               </div>
+              {session.student_profile?.target_role && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Target className="w-3.5 h-3.5" />
+                  {session.student_profile.target_role}
+                </div>
+              )}
             </div>
           </div>
 
@@ -97,7 +227,7 @@ function RequestCard({ session, onAccept, onDecline, responding }) {
 
         {/* Topic */}
         {session.topic && (
-          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-secondary/40 border border-border/30 mb-4">
+          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-secondary/40 border border-border/30 mb-3">
             <MessageSquare className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Topic</p>
@@ -106,23 +236,47 @@ function RequestCard({ session, onAccept, onDecline, responding }) {
           </div>
         )}
 
-        {/* Meeting link for accepted */}
-        {session.status === 'accepted' && session.meeting_link && (
+        {/* Student profile toggle */}
+        {hasProfile && (
           <button
-            onClick={() => window.open(session.meeting_link, '_blank')}
-            className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 transition-colors mb-4 font-medium"
+            onClick={() => setShowProfile(!showProfile)}
+            className="flex items-center gap-1.5 text-xs text-primary hover:opacity-80 transition-opacity mb-2 font-medium"
           >
-            <Video className="w-4 h-4" />
-            Join Meeting Room
+            <User className="w-3.5 h-3.5" />
+            {showProfile ? 'Hide student profile' : 'View student profile'}
+            {showProfile
+              ? <ChevronUp className="w-3.5 h-3.5" />
+              : <ChevronDown className="w-3.5 h-3.5" />
+            }
           </button>
         )}
 
-        {/* Actions for pending */}
+        <AnimatePresence>
+          {showProfile && (
+            <StudentProfileCard profile={session.student_profile} />
+          )}
+        </AnimatePresence>
+
+        {/* Meeting link for accepted sessions */}
+        {session.status === 'accepted' && session.meeting_link && (
+          <a
+            href={session.meeting_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 transition-colors mb-3 font-medium mt-2"
+          >
+            <Video className="w-4 h-4" />
+            Join Meeting Room
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
+
+        {/* Actions for pending sessions */}
         {session.status === 'pending' && (
           <>
             <button
               onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 mt-2"
             >
               {expanded
                 ? <><ChevronUp className="w-3.5 h-3.5" /> Hide actions</>
@@ -139,10 +293,13 @@ function RequestCard({ session, onAccept, onDecline, responding }) {
                   className="overflow-hidden"
                 >
                   <div className="space-y-3 pt-1">
+                    {/* Meeting link input */}
                     <div>
                       <label className="text-xs font-medium text-foreground mb-1.5 block">
                         Meeting Link
-                        <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                        <span className="text-muted-foreground font-normal ml-1">
+                          (Google Meet, Zoom, or any link)
+                        </span>
                       </label>
                       <input
                         value={meetingLink}
@@ -150,7 +307,12 @@ function RequestCard({ session, onAccept, onDecline, responding }) {
                         placeholder="https://meet.google.com/... or Zoom link"
                         className="w-full px-3 py-2.5 rounded-xl border border-border/60 bg-secondary/40 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-violet-500/50 transition-colors"
                       />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        This link will be shared with the student when you accept.
+                      </p>
                     </div>
+
+                    {/* Accept / Decline buttons */}
                     <div className="flex gap-3">
                       <motion.button
                         whileHover={{ scale: 1.02 }}
@@ -187,6 +349,7 @@ function RequestCard({ session, onAccept, onDecline, responding }) {
   );
 }
 
+// ── Main Page ─────────────────────────────────────────
 export default function RequestsPage() {
   const { getUserId } = useAuth();
   const [sessions, setSessions] = useState([]);
@@ -207,7 +370,7 @@ export default function RequestsPage() {
     try {
       const res = await mentorApi.getIncomingSessions(userId);
       setSessions(res.data?.sessions || []);
-    } catch (err) {
+    } catch {
       setError('Failed to load session requests.');
     } finally {
       setLoading(false);
@@ -264,7 +427,7 @@ export default function RequestsPage() {
           </div>
           <h2 className="font-display text-2xl font-bold">Incoming Requests</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Review and respond to student session requests
+            Review student profiles and respond to session requests
           </p>
         </div>
         <motion.button
@@ -354,7 +517,7 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {/* Cards */}
+      {/* Request cards */}
       {!loading && filtered.length > 0 && (
         <div className="space-y-4">
           {filtered.map((session, i) => (
@@ -381,7 +544,8 @@ export default function RequestsPage() {
           </div>
           <h3 className="font-display text-xl font-bold mb-2">No requests yet</h3>
           <p className="text-sm text-muted-foreground max-w-sm">
-            When students discover your profile and request sessions, they'll appear here.
+            When students discover your profile and request sessions, they'll appear here
+            with their full AI profile attached.
           </p>
         </motion.div>
       )}
