@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Moon, Sun, Bell, UserCircle } from 'lucide-react';
+import { Moon, Sun, Bell, UserCircle, Menu } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 const pageTitles = {
@@ -34,18 +34,29 @@ function ThemeToggle() {
   );
 }
 
-export default function TopNavbar({ user }) {
+export default function TopNavbar({ user, onMenuClick }) {
   const pathname = usePathname();
   const router = useRouter();
   const page = pageTitles[pathname] || { title: 'Dashboard', subtitle: '' };
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0">
-      <div>
-        <h1 className="font-display text-xl font-bold text-foreground">{page.title}</h1>
-        {page.subtitle && (
-          <p className="text-sm text-muted-foreground mt-0.5">{page.subtitle}</p>
-        )}
+    <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0">
+      
+      <div className="flex items-center gap-3">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 rounded-xl hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div>
+          <h1 className="font-display text-xl font-bold text-foreground">{page.title}</h1>
+          {page.subtitle && (
+            <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">{page.subtitle}</p>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -66,7 +77,6 @@ export default function TopNavbar({ user }) {
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold group-hover:ring-2 group-hover:ring-primary/50 transition-all">
               {user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
-            {/* Online dot */}
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-card" />
           </div>
           <div className="hidden sm:block text-left">

@@ -13,44 +13,21 @@ import {
   ChevronRight,
   Sparkles,
   LogOut,
-  UserCircle
+  UserCircle,
+  X
 } from 'lucide-react';
 
 const navItems = [
-  {
-    label: 'Overview',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    exact: true,
-  },
-  {
-    label: 'Resume',
-    href: '/dashboard/resume',
-    icon: FileText,
-  },
-  {
-    label: 'Job Matches',
-    href: '/dashboard/jobs',
-    icon: Briefcase,
-  },
-  {
-    label: 'Mentors',
-    href: '/dashboard/mentors',
-    icon: Users,
-  },
-  {
-    label: 'Skill Gap',
-    href: '/dashboard/skills',
-    icon: TrendingUp,
-  },
-  { 
-    label: 'Profile', 
-    href: '/dashboard/profile',
-     icon: UserCircle 
-  },
+  { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, exact: true },
+  { label: 'Resume', href: '/dashboard/resume', icon: FileText },
+  { label: 'Job Matches', href: '/dashboard/jobs', icon: Briefcase },
+  { label: 'Mentors', href: '/dashboard/mentors', icon: Users },
+  { label: 'Skill Gap', href: '/dashboard/skills', icon: TrendingUp },
+  { label: 'Profile', href: '/dashboard/profile', icon: UserCircle },
 ];
 
-export default function Sidebar({ user, onLogout }) {
+// ── Desktop sidebar (unchanged behavior) ────────────────────────────────
+function DesktopSidebar({ user, onLogout }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -64,14 +41,12 @@ export default function Sidebar({ user, onLogout }) {
     <motion.aside
       animate={{ width: collapsed ? 72 : 240 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="relative flex flex-col h-screen border-r border-border/60 bg-card/80 backdrop-blur-xl overflow-hidden flex-shrink-0"
+      className="relative hidden lg:flex flex-col h-screen border-r border-border/60 bg-card/80 backdrop-blur-xl overflow-hidden flex-shrink-0"
     >
       {/* Background glow */}
       <div
         className="absolute top-0 left-0 w-full h-48 opacity-10 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at top left, rgba(59,130,246,0.4), transparent 70%)',
-        }}
+        style={{ background: 'radial-gradient(ellipse at top left, rgba(59,130,246,0.4), transparent 70%)' }}
       />
 
       {/* Logo */}
@@ -108,21 +83,14 @@ export default function Sidebar({ user, onLogout }) {
                   : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
               }`}
             >
-              {/* Active indicator */}
               {active && (
                 <motion.div
-                  layoutId="activeNav"
+                  layoutId="activeNavDesktop"
                   className="absolute inset-0 rounded-xl bg-primary/10"
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                 />
               )}
-
-              <item.icon
-                className={`w-5 h-5 flex-shrink-0 relative z-10 transition-colors ${
-                  active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                }`}
-              />
-
+              <item.icon className={`w-5 h-5 flex-shrink-0 relative z-10 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span
@@ -136,8 +104,6 @@ export default function Sidebar({ user, onLogout }) {
                   </motion.span>
                 )}
               </AnimatePresence>
-
-              {/* Tooltip when collapsed */}
               {collapsed && (
                 <div className="absolute left-full ml-3 px-2 py-1 rounded-lg bg-popover border border-border text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
                   {item.label}
@@ -150,7 +116,6 @@ export default function Sidebar({ user, onLogout }) {
 
       {/* User + Logout */}
       <div className="relative px-3 py-4 border-t border-border/40 space-y-2">
-        {/* User info */}
         {!collapsed && user && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -167,8 +132,6 @@ export default function Sidebar({ user, onLogout }) {
             </div>
           </motion.div>
         )}
-
-        {/* Logout */}
         <button
           onClick={onLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all group"
@@ -176,11 +139,7 @@ export default function Sidebar({ user, onLogout }) {
           <LogOut className="w-5 h-5 flex-shrink-0" />
           <AnimatePresence>
             {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 Logout
               </motion.span>
             )}
@@ -193,11 +152,129 @@ export default function Sidebar({ user, onLogout }) {
         onClick={() => setCollapsed(!collapsed)}
         className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all z-10 shadow-md"
       >
-        {collapsed
-          ? <ChevronRight className="w-3 h-3" />
-          : <ChevronLeft className="w-3 h-3" />
-        }
+        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
     </motion.aside>
+  );
+}
+
+// ── Mobile drawer sidebar ────────────────────────────────────────────────
+function MobileSidebar({ user, onLogout, open, onClose }) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const isActive = (item) => {
+    if (item.exact) return pathname === item.href;
+    return pathname.startsWith(item.href);
+  };
+
+  const handleNav = (href) => {
+    router.push(href);
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          />
+
+          {/* Drawer */}
+          <motion.aside
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
+            transition={{ type: 'spring', bounce: 0.1, duration: 0.4 }}
+            className="fixed top-0 left-0 z-50 flex flex-col h-screen w-64 border-r border-border/60 bg-card/95 backdrop-blur-xl md:hidden"
+          >
+            {/* Background glow */}
+            <div
+              className="absolute top-0 left-0 w-full h-48 opacity-10 pointer-events-none"
+              style={{ background: 'radial-gradient(ellipse at top left, rgba(59,130,246,0.4), transparent 70%)' }}
+            />
+
+            {/* Logo + close */}
+            <div className="relative flex items-center justify-between px-4 py-5 border-b border-border/40">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/25">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-display font-bold text-base">S3 Dashboard</span>
+              </div>
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Nav Items */}
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+              {navItems.map((item) => {
+                const active = isActive(item);
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => handleNav(item.href)}
+                    className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      active
+                        ? 'bg-primary/15 text-primary border border-primary/20'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
+                    }`}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="activeNavMobile"
+                        className="absolute inset-0 rounded-xl bg-primary/10"
+                        transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                      />
+                    )}
+                    <item.icon className={`w-5 h-5 flex-shrink-0 relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <span className="relative z-10">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* User + Logout */}
+            <div className="relative px-3 py-4 border-t border-border/40 space-y-2">
+              {user && (
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary/40">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {user?.name?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => { onLogout(); onClose(); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
+              >
+                <LogOut className="w-5 h-5 flex-shrink-0" />
+                Logout
+              </button>
+            </div>
+          </motion.aside>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ── Main export ──────────────────────────────────────────────────────────
+export default function Sidebar({ user, onLogout, mobileOpen, onMobileClose }) {
+  return (
+    <>
+      <DesktopSidebar user={user} onLogout={onLogout} />
+      <MobileSidebar user={user} onLogout={onLogout} open={mobileOpen} onClose={onMobileClose} />
+    </>
   );
 }
