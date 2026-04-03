@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Eye, EyeOff, Mail, Lock, User, Phone, Sparkles, ChevronDown } from 'lucide-react';
 
@@ -161,6 +161,53 @@ function CountryCodeSelect({ value, onChange }) {
   );
 }
 
+// ─── Session polling hook ─────────────────────────────────────────────────────
+// Polls /api/auth/verify-session every 30s. If session becomes invalid
+// (another device logged in), clears local state and redirects to home.
+function useSessionGuard() {
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) return; // Not logged in — nothing to check
+
+      try {
+        const res = await fetch('/api/auth/verify-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          if (data.valid === false) {
+            // Another device/tab has taken over — force logout here
+            localStorage.removeItem('authToken');
+            // Delete cookie
+            document.cookie = 'authToken=; path=/; max-age=0';
+            // Broadcast to all other tabs in this browser
+            localStorage.setItem('auth_logout', Date.now().toString());
+            // Redirect to home with message
+            window.location.assign('/?auth=login&reason=session_expired');
+          }
+        }
+      } catch (err) {
+        // Network error — don't force logout, just skip this check
+        console.warn('Session check failed (network):', err);
+      }
+    };
+
+    // Check immediately on mount
+    checkSession();
+
+    // Then check every 30 seconds
+    intervalRef.current = setInterval(checkSession, 30_000);
+
+    return () => clearInterval(intervalRef.current);
+  }, []);
+}
+
 // ─── Main AuthModal ───────────────────────────────────────────────────────────
 export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -178,18 +225,25 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     role: 'student',
   });
 
-  // ── Multi-tab logout sync ──────────────────────────────────────────────────
+  // ── Multi-tab session guard ────────────────────────────────────────────────
+  useSessionGuard();
+
+  // ── Cross-tab logout sync via localStorage event ───────────────────────────
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'authToken' && !e.newValue) {
-        // Token was removed in another tab → close modal and redirect
+      // Another tab broadcasted a logout
+      if (e.key === 'auth_logout' && e.newValue) {
+        localStorage.removeItem('authToken');
+        document.cookie = 'authToken=; path=/; max-age=0';
         window.location.assign('/');
       }
-      if (e.key === 'authToken' && e.newValue && e.oldValue && e.newValue !== e.oldValue) {
-        // New login in another tab → reload to sync session
+
+      // Another tab broadcasted a new login — reload to sync
+      if (e.key === 'auth_login' && e.newValue) {
         window.location.reload();
       }
     };
+
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
@@ -198,8 +252,6 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
-
-    // Live validation on touched fields
     if (touched[name]) {
       validateField(name, value);
     }
@@ -261,10 +313,15 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
       if (mode === 'login') {
         if (data?.token) {
+          // Store token
           localStorage.setItem('authToken', data.token);
           document.cookie = `authToken=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
-          // Broadcast login to other tabs
-          localStorage.setItem('authEvent', `login:${Date.now()}`);
+
+          // ── KEY: Broadcast to ALL other tabs that a new login happened.
+          // Any tab listening will see the new token is different from what
+          // they have, and will reload — the middleware will then reject their
+          // old session on next navigation.
+          localStorage.setItem('auth_login', Date.now().toString());
         }
 
         const computedRedirectTo =
