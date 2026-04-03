@@ -1,13 +1,175 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff, Mail, Lock, User, Phone, Sparkles } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, User, Phone, Sparkles, ChevronDown } from 'lucide-react';
 
+// ─── Country codes list ───────────────────────────────────────────────────────
+const COUNTRY_CODES = [
+  { code: '+91', country: 'IN', flag: '🇮🇳' },
+  { code: '+1',  country: 'US', flag: '🇺🇸' },
+  { code: '+44', country: 'GB', flag: '🇬🇧' },
+  { code: '+61', country: 'AU', flag: '🇦🇺' },
+  { code: '+971', country: 'AE', flag: '🇦🇪' },
+  { code: '+65', country: 'SG', flag: '🇸🇬' },
+  { code: '+49', country: 'DE', flag: '🇩🇪' },
+  { code: '+33', country: 'FR', flag: '🇫🇷' },
+  { code: '+81', country: 'JP', flag: '🇯🇵' },
+  { code: '+86', country: 'CN', flag: '🇨🇳' },
+  { code: '+55', country: 'BR', flag: '🇧🇷' },
+  { code: '+52', country: 'MX', flag: '🇲🇽' },
+  { code: '+7',  country: 'RU', flag: '🇷🇺' },
+  { code: '+27', country: 'ZA', flag: '🇿🇦' },
+  { code: '+234', country: 'NG', flag: '🇳🇬' },
+];
+
+// ─── Validation helpers ───────────────────────────────────────────────────────
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+function validateName(name) {
+  if (!name || name.trim().length === 0) return 'Full name is required';
+  const trimmed = name.trim();
+  if (trimmed.length < 3) return 'Name must be at least 3 characters';
+  if (!/^[a-zA-Z\s'-]+$/.test(trimmed)) return 'Name can only contain letters, spaces, hyphens and apostrophes';
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return 'Please enter your first and last name';
+  if (parts.some(p => p.length < 2)) return 'Each part of your name must be at least 2 characters';
+  return '';
+}
+
+function validateEmail(email) {
+  if (!email || email.trim().length === 0) return 'Email address is required';
+  if (!EMAIL_REGEX.test(email.trim())) return 'Please enter a valid email address';
+  return '';
+}
+
+function validatePhone(phone) {
+  if (!phone || phone.trim().length === 0) return 'Phone number is required';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 7) return 'Phone number is too short';
+  if (digits.length > 15) return 'Phone number is too long';
+  if (!/^[\d\s\-().]+$/.test(phone)) return 'Phone number contains invalid characters';
+  return '';
+}
+
+function validatePassword(password, isSignup) {
+  if (!password) return 'Password is required';
+  if (isSignup) {
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+    if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+  } else {
+    if (password.length < 6) return 'Password must be at least 6 characters';
+  }
+  return '';
+}
+
+// ─── Password strength indicator ─────────────────────────────────────────────
+function PasswordStrength({ password }) {
+  if (!password) return null;
+  let strength = 0;
+  if (password.length >= 8) strength++;
+  if (/[A-Z]/.test(password)) strength++;
+  if (/[0-9]/.test(password)) strength++;
+  if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+  const labels = ['Weak', 'Fair', 'Good', 'Strong'];
+  const colors = ['bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-emerald-500'];
+  const textColors = ['text-red-400', 'text-orange-400', 'text-yellow-400', 'text-emerald-400'];
+
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1 mb-1">
+        {[0, 1, 2, 3].map(i => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+              i < strength ? colors[strength - 1] : 'bg-border'
+            }`}
+          />
+        ))}
+      </div>
+      <p className={`text-xs ${strength > 0 ? textColors[strength - 1] : 'text-muted-foreground'}`}>
+        {strength > 0 ? `${labels[strength - 1]} password` : ''}
+      </p>
+    </div>
+  );
+}
+
+// ─── Field error message ──────────────────────────────────────────────────────
+function FieldError({ error }) {
+  return (
+    <AnimatePresence>
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          className="text-xs text-red-400 mt-1.5 flex items-center gap-1"
+        >
+          <span className="w-3 h-3 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 shrink-0" style={{fontSize:'9px'}}>!</span>
+          {error}
+        </motion.p>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ─── Country code dropdown ────────────────────────────────────────────────────
+function CountryCodeSelect({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selected = COUNTRY_CODES.find(c => c.code === value) || COUNTRY_CODES[0];
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-3 py-3 rounded-l-xl border border-r-0 border-border bg-secondary/50 text-sm font-medium text-foreground hover:bg-secondary transition-colors whitespace-nowrap"
+      >
+        <span>{selected.flag}</span>
+        <span className="text-muted-foreground">{selected.code}</span>
+        <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            className="absolute top-full left-0 mt-1 w-40 rounded-xl border border-border bg-card shadow-xl z-50 overflow-auto max-h-48 custom-scrollbar"
+          >
+            {COUNTRY_CODES.map(c => (
+              <button
+                key={c.code + c.country}
+                type="button"
+                onClick={() => { onChange(c.code); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary transition-colors text-left ${
+                  c.code === value ? 'bg-primary/10 text-primary' : 'text-foreground'
+                }`}
+              >
+                <span>{c.flag}</span>
+                <span className="text-muted-foreground">{c.code}</span>
+                <span className="text-xs text-muted-foreground">{c.country}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Main AuthModal ───────────────────────────────────────────────────────────
 export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [touched, setTouched] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -16,22 +178,79 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     role: 'student',
   });
 
+  // ── Multi-tab logout sync ──────────────────────────────────────────────────
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'authToken' && !e.newValue) {
+        // Token was removed in another tab → close modal and redirect
+        window.location.assign('/');
+      }
+      if (e.key === 'authToken' && e.newValue && e.oldValue && e.newValue !== e.oldValue) {
+        // New login in another tab → reload to sync session
+        window.location.reload();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
+
+    // Live validation on touched fields
+    if (touched[name]) {
+      validateField(name, value);
+    }
+  };
+
+  const validateField = (name, value) => {
+    let err = '';
+    if (name === 'name') err = validateName(value);
+    if (name === 'email') err = validateEmail(value);
+    if (name === 'phone') err = validatePhone(value);
+    if (name === 'password') err = validatePassword(value, mode === 'signup');
+    setFieldErrors(prev => ({ ...prev, [name]: err }));
+    return err;
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    validateField(name, value);
+  };
+
+  const validateAll = () => {
+    const errors = {};
+    if (mode === 'signup') {
+      errors.name = validateName(formData.name);
+      errors.phone = validatePhone(formData.phone);
+    }
+    errors.email = validateEmail(formData.email);
+    errors.password = validatePassword(formData.password, mode === 'signup');
+    setFieldErrors(errors);
+    setTouched({ name: true, email: true, phone: true, password: true });
+    return Object.values(errors).every(e => !e);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
+    if (!validateAll()) return;
+
+    setIsLoading(true);
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup';
+      const payload = mode === 'signup'
+        ? { ...formData, phone: `${countryCode}${formData.phone.trim()}` }
+        : { email: formData.email.trim(), password: formData.password };
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -42,10 +261,10 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
       if (mode === 'login') {
         if (data?.token) {
-          // Save to localStorage for API calls
           localStorage.setItem('authToken', data.token);
-          // Save to cookie for middleware route protection
           document.cookie = `authToken=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+          // Broadcast login to other tabs
+          localStorage.setItem('authEvent', `login:${Date.now()}`);
         }
 
         const computedRedirectTo =
@@ -64,6 +283,8 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
       } else {
         onModeChange('login');
         setFormData({ email: '', password: '', name: '', phone: '', role: 'student' });
+        setFieldErrors({});
+        setTouched({});
         setError('Account created! Please sign in.');
       }
     } catch (err) {
@@ -71,6 +292,14 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const switchMode = () => {
+    onModeChange(mode === 'login' ? 'signup' : 'login');
+    setFormData({ email: '', password: '', name: '', phone: '', role: 'student' });
+    setFieldErrors({});
+    setTouched({});
+    setError('');
   };
 
   return (
@@ -88,15 +317,13 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.92, opacity: 0, y: 20 }}
           transition={{ type: 'spring', duration: 0.4, bounce: 0.2 }}
-          className="relative w-full max-w-md rounded-3xl border border-border/60 bg-card/90 backdrop-blur-xl shadow-2xl p-8 overflow-hidden"
+          className="relative w-full max-w-md rounded-3xl border border-border/60 bg-card/90 backdrop-blur-xl shadow-2xl p-8 overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Background glow */}
           <div
             className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-40 opacity-20 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse, rgba(59,130,246,0.6), transparent 70%)',
-            }}
+            style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.6), transparent 70%)' }}
           />
 
           {/* Header */}
@@ -126,20 +353,18 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="relative space-y-4">
+          <form onSubmit={handleSubmit} className="relative space-y-4" noValidate>
 
             {/* Role selector — signup only */}
             {mode === 'signup' && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  I am a
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">I am a</label>
                 <div className="grid grid-cols-2 gap-3">
                   {['student', 'mentor'].map((r) => (
                     <button
                       key={r}
                       type="button"
-                      onClick={() => setFormData({ ...formData, role: r })}
+                      onClick={() => setFormData(prev => ({ ...prev, role: r }))}
                       className={`py-3 rounded-xl border text-sm font-medium transition-all capitalize ${
                         formData.role === r
                           ? 'border-primary bg-primary/10 text-primary'
@@ -153,11 +378,11 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
               </div>
             )}
 
-            {/* Name — signup only */}
+            {/* Full Name — signup only */}
             {mode === 'signup' && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Full Name
+                  Full Name <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -166,11 +391,14 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    required
-                    placeholder="Enter your full name"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                    onBlur={handleBlur}
+                    placeholder="e.g. Manjeet Mishra"
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm ${
+                      fieldErrors.name && touched.name ? 'border-red-500/60' : 'border-border'
+                    }`}
                   />
                 </div>
+                <FieldError error={touched.name ? fieldErrors.name : ''} />
               </div>
             )}
 
@@ -178,27 +406,32 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
             {mode === 'signup' && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Phone Number
+                  Phone Number <span className="text-red-400">*</span>
                 </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Enter your phone number"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
-                  />
+                <div className="flex">
+                  <CountryCodeSelect value={countryCode} onChange={setCountryCode} />
+                  <div className="relative flex-1">
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      placeholder="9876543210"
+                      className={`w-full px-4 py-3 rounded-r-xl border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm ${
+                        fieldErrors.phone && touched.phone ? 'border-red-500/60' : 'border-border'
+                      }`}
+                    />
+                  </div>
                 </div>
+                <FieldError error={touched.phone ? fieldErrors.phone : ''} />
               </div>
             )}
 
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Email Address
+                Email Address <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -207,17 +440,20 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  required
-                  placeholder="Enter your email"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                  onBlur={handleBlur}
+                  placeholder="you@example.com"
+                  className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm ${
+                    fieldErrors.email && touched.email ? 'border-red-500/60' : 'border-border'
+                  }`}
                 />
               </div>
+              <FieldError error={touched.email ? fieldErrors.email : ''} />
             </div>
 
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Password
+                Password <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -226,9 +462,11 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  required
-                  placeholder="Enter your password"
-                  className="w-full pl-10 pr-12 py-3 rounded-xl border border-border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                  onBlur={handleBlur}
+                  placeholder={mode === 'signup' ? 'Min 8 chars, 1 uppercase, 1 number' : 'Enter your password'}
+                  className={`w-full pl-10 pr-12 py-3 rounded-xl border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm ${
+                    fieldErrors.password && touched.password ? 'border-red-500/60' : 'border-border'
+                  }`}
                 />
                 <button
                   type="button"
@@ -238,9 +476,11 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <FieldError error={touched.password ? fieldErrors.password : ''} />
+              {mode === 'signup' && <PasswordStrength password={formData.password} />}
             </div>
 
-            {/* Error */}
+            {/* Global error / success */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -280,11 +520,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
             <p className="text-sm text-muted-foreground">
               {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
               <button
-                onClick={() => {
-                  onModeChange(mode === 'login' ? 'signup' : 'login');
-                  setFormData({ email: '', password: '', name: '', phone: '', role: 'student' });
-                  setError('');
-                }}
+                onClick={switchMode}
                 className="ml-2 text-primary hover:opacity-80 font-medium transition-opacity"
               >
                 {mode === 'login' ? 'Sign Up' : 'Sign In'}
@@ -307,6 +543,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
             {['Google', 'GitHub'].map((provider) => (
               <button
                 key={provider}
+                type="button"
                 className="py-2.5 rounded-xl border border-border bg-secondary/30 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/80 transition-all"
               >
                 {provider}
