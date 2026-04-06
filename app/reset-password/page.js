@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -28,7 +28,7 @@ function PasswordStrength({ password }) {
   );
 }
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -205,5 +205,17 @@ export default function ResetPasswordPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground text-sm">Loading...</div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
