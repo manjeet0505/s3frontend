@@ -55,11 +55,12 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js needs unsafe-eval in dev; tighten in prod if possible
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://challenges.cloudflare.com",// Next.js needs unsafe-eval in dev; tighten in prod if possible
+              "frame-src https://challenges.cloudflare.com", 
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https://images.unsplash.com",
-              "connect-src 'self' http://localhost:8000 http://localhost:3000 https://s3dashboard-production.up.railway.app",
+              "connect-src 'self' http://localhost:8000 http://localhost:3000 https://s3dashboard-production.up.railway.app https://challenges.cloudflare.com",
               "frame-ancestors 'none'", // Redundant with X-Frame-Options but belt-and-suspenders
               "base-uri 'self'",
               "form-action 'self'",
