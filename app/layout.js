@@ -1,6 +1,8 @@
 import { Syne, DM_Sans } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import './globals.css'
+import Footer from './components/Footer';
+import CookieConsent from './components/CookieConsent';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -37,6 +39,8 @@ export default function RootLayout({ children }) {
         >
           {children}
         </ThemeProvider>
+        <Footer />
+        <CookieConsent />
       </body>
     </html>
   )

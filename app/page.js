@@ -467,17 +467,6 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-border px-6 py-8 max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-            <Sparkles className="w-3 h-3 text-white" />
-          </div>
-          <span className="font-display font-bold text-sm">S3 Dashboard</span>
-        </div>
-        <p className="text-sm text-muted-foreground">Built with FastAPI · Next.js · GPT-4o · Qdrant</p>
-      </footer>
-
       {authModal && (
         <AuthModal
           mode={authModal}
