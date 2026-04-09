@@ -7,6 +7,7 @@ import Script from 'next/script';
 import Link from 'next/link';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const IS_DEV = process.env.NODE_ENV === 'development';
 
 // ─── Country codes ────────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
@@ -118,7 +119,7 @@ function CountryCodeSelect({ value, onChange }) {
       <AnimatePresence>
         {open && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-            className="absolute top-full left-0 mt-1 w-40 rounded-xl border border-border bg-card shadow-xl z-50 overflow-auto max-h-48">
+            className="absolute top-full left-0 mt-1 w-40 rounded-xl border border-border bg-card shadow-xl z-50 overflow-auto max-h-48">       
             {COUNTRY_CODES.map(c => (
               <button key={c.code + c.country} type="button"
                 onClick={() => { onChange(c.code); setOpen(false); }}
@@ -161,8 +162,10 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // ── Render Turnstile widget ────────────────────────────────────────────────
+  // ── Render Turnstile widget (only in production) ───────────────────────────
   useEffect(() => {
+    // Skip Turnstile entirely in development
+    if (IS_DEV) return;
     if (!TURNSTILE_SITE_KEY || !turnstileRef.current) return;
     if (typeof window.turnstile === 'undefined') return;
 
@@ -228,8 +231,8 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     setError('');
     if (!validateAll()) return;
 
-    // ── Turnstile verification ─────────────────────────────────────────────
-    if (TURNSTILE_SITE_KEY) {
+    // ── Turnstile verification — SKIPPED in development ──────────────────────
+    if (TURNSTILE_SITE_KEY && !IS_DEV) {
       let token = captchaToken;
 
       // If no token yet, execute the challenge
@@ -311,7 +314,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
       }
     } catch (err) {
       setError(err.message);
-      if (widgetIdRef.current !== null) {
+      if (!IS_DEV && widgetIdRef.current !== null) {
         window.turnstile?.reset(widgetIdRef.current);
         setCaptchaToken('');
       }
@@ -331,8 +334,8 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
   return (
     <>
-      {/* Load Turnstile script */}
-      {TURNSTILE_SITE_KEY && (
+      {/* Load Turnstile script — only in production */}
+      {TURNSTILE_SITE_KEY && !IS_DEV && (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
           strategy="lazyOnload"
@@ -412,7 +415,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
               {/* Full Name */}
               {mode === 'signup' && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Full Name <span className="text-red-400">*</span></label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Full Name <span className="text-red-400">*</span></label>   
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <input type="text" name="name" value={formData.name} onChange={handleInputChange} onBlur={handleBlur}
@@ -439,7 +442,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Email Address <span className="text-red-400">*</span></label>
+                <label className="block text-sm font-medium text-foreground mb-2">Email Address <span className="text-red-400">*</span></label> 
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <input type="email" name="email" value={formData.email} onChange={handleInputChange} onBlur={handleBlur}
@@ -474,8 +477,8 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
                 {mode === 'signup' && <PasswordStrength password={formData.password} />}
               </div>
 
-              {/* Turnstile container (invisible) */}
-              {TURNSTILE_SITE_KEY && <div ref={turnstileRef} />}
+              {/* Turnstile container — only rendered in production */}
+              {TURNSTILE_SITE_KEY && !IS_DEV && <div ref={turnstileRef} />}
 
               {/* Global error/success */}
               <AnimatePresence>

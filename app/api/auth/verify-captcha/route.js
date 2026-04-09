@@ -10,6 +10,12 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'CAPTCHA token missing' }, { status: 400 });
     }
 
+    // ── Guard: secret key must exist ─────────────────────────────────────────
+    if (!TURNSTILE_SECRET) {
+      console.error('[Turnstile] TURNSTILE_SECRET_KEY is not set in environment variables');
+      return NextResponse.json({ success: false, message: 'Server misconfiguration' }, { status: 500 });
+    }
+
     const formData = new URLSearchParams();
     formData.append('secret', TURNSTILE_SECRET);
     formData.append('response', token);
@@ -21,7 +27,15 @@ export async function POST(request) {
 
     const data = await verifyRes.json();
 
+    // ── Log the FULL Cloudflare response so you can see error-codes ──────────
+    console.log('[Turnstile] Cloudflare response:', JSON.stringify(data));
+
     if (!data.success) {
+      // data['error-codes'] tells you exactly what went wrong, e.g.:
+      // 'invalid-input-secret'  → wrong secret key on Vercel
+      // 'invalid-input-response' → bad/expired token
+      // 'timeout-or-duplicate'  → token already used or too old
+      console.error('[Turnstile] Verification failed. Error codes:', data['error-codes']);
       return NextResponse.json(
         { success: false, message: 'CAPTCHA verification failed. Please try again.' },
         { status: 400 }
