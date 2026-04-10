@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import Sidebar from '../components/Sidebar';
 import TopNavbar from '../components/TopNavbar';
+import CareerChat from '../components/CareerChat';
 
 export default function DashboardLayout({ children }) {
   const { user, loading, logout, isAuthenticated, getName, getEmail, getRole } = useAuth();
@@ -67,6 +68,7 @@ export default function DashboardLayout({ children }) {
         <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
           {children}
         </main>
+        <CareerChat /> 
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import { resumeApi, jobsApi, progressApi } from '@/lib/api';
 
+
 function StatCard({ icon: Icon, label, value, sub, color, bg, border, loading, onClick }) {
   return (
     <motion.div
