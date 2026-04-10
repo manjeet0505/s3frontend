@@ -339,17 +339,6 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
           strategy="lazyOnload"
-          onLoad={() => {
-            if (turnstileRef.current && !widgetIdRef.current) {
-              widgetIdRef.current = window.turnstile?.render(turnstileRef.current, {
-                sitekey: TURNSTILE_SITE_KEY,
-                theme: 'dark',
-                size: 'invisible',
-                callback: (token) => setCaptchaToken(token),
-                'expired-callback': () => setCaptchaToken(''),
-              });
-            }
-          }}
         />
       )}
 
