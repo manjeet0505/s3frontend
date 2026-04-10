@@ -28,7 +28,6 @@ const COUNTRY_CODES = [
   { code: '+234', country: 'NG', flag: '🇳🇬' },
 ];
 
-// ─── Validation ───────────────────────────────────────────────────────────────
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
 function validateName(name) {
@@ -66,7 +65,6 @@ function validatePassword(password, isSignup) {
   return '';
 }
 
-// ─── Password strength ────────────────────────────────────────────────────────
 function PasswordStrength({ password }) {
   if (!password) return null;
   let strength = 0;
@@ -119,7 +117,7 @@ function CountryCodeSelect({ value, onChange }) {
       <AnimatePresence>
         {open && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-            className="absolute top-full left-0 mt-1 w-40 rounded-xl border border-border bg-card shadow-xl z-50 overflow-auto max-h-48">       
+            className="absolute top-full left-0 mt-1 w-40 rounded-xl border border-border bg-card shadow-xl z-50 overflow-auto max-h-48">
             {COUNTRY_CODES.map(c => (
               <button key={c.code + c.country} type="button"
                 onClick={() => { onChange(c.code); setOpen(false); }}
@@ -147,6 +145,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
   const [captchaToken, setCaptchaToken] = useState('');
   const turnstileRef = useRef(null);
   const widgetIdRef = useRef(null);
+  const scriptLoadedRef = useRef(false); // ← track if script already loaded
 
   const [formData, setFormData] = useState({
     email: '', password: '', name: '', phone: '', role: 'student',
@@ -162,17 +161,30 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // ── Render Turnstile widget (only in production) ───────────────────────────
+  // ── Cleanup Turnstile widget on mode change or unmount ─────────────────────
+  // NOTE: Rendering is now done in onLoad callback of <Script> below.
+  //       This effect only handles cleanup + re-render if script already loaded.
   useEffect(() => {
-    // Skip Turnstile entirely in development
-    if (IS_DEV) return;
-    if (!TURNSTILE_SITE_KEY || !turnstileRef.current) return;
-    if (typeof window.turnstile === 'undefined') return;
+    if (IS_DEV || !TURNSTILE_SITE_KEY) return;
 
-    if (widgetIdRef.current) {
-      window.turnstile.remove(widgetIdRef.current);
+    // If script already loaded previously (e.g. mode switch), render immediately
+    if (scriptLoadedRef.current && turnstileRef.current && !widgetIdRef.current) {
+      renderTurnstile();
     }
 
+    return () => {
+      // Cleanup widget when mode changes or component unmounts
+      if (widgetIdRef.current) {
+        window.turnstile?.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+      setCaptchaToken('');
+    };
+  }, [mode]); // re-run when mode switches login ↔ signup
+
+  // ── Render Turnstile widget ────────────────────────────────────────────────
+  const renderTurnstile = () => {
+    if (!turnstileRef.current || widgetIdRef.current) return;
     widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
       sitekey: TURNSTILE_SITE_KEY,
       theme: 'dark',
@@ -181,14 +193,13 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
       'expired-callback': () => setCaptchaToken(''),
       'error-callback': () => setCaptchaToken(''),
     });
+  };
 
-    return () => {
-      if (widgetIdRef.current) {
-        window.turnstile?.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
-    };
-  }, [mode]);
+  // ── Called by <Script onLoad> when Turnstile JS finishes loading ───────────
+  const handleScriptLoad = () => {
+    scriptLoadedRef.current = true;
+    renderTurnstile();
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -231,25 +242,32 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     setError('');
     if (!validateAll()) return;
 
-    // ── Turnstile verification — SKIPPED in development ──────────────────────
+    // ── Turnstile verification — SKIPPED in development ───────────────────
     if (TURNSTILE_SITE_KEY && !IS_DEV) {
       let token = captchaToken;
 
-      // If no token yet, execute the challenge
-      if (!token && widgetIdRef.current !== null) {
+      // If no token yet, execute the invisible challenge
+      if (!token) {
+        if (widgetIdRef.current === null) {
+          // Widget never rendered — script likely blocked by CSP
+          setError('Security check could not load. Please disable any ad blockers and try again.');
+          return;
+        }
         try {
           window.turnstile?.execute(widgetIdRef.current);
-          // Wait up to 5s for token
+          // Wait up to 8s for token
           token = await new Promise((resolve) => {
             let attempts = 0;
             const interval = setInterval(() => {
               attempts++;
               const t = window.turnstile?.getResponse(widgetIdRef.current);
               if (t) { clearInterval(interval); resolve(t); }
-              if (attempts > 50) { clearInterval(interval); resolve(''); }
+              if (attempts > 80) { clearInterval(interval); resolve(''); }
             }, 100);
           });
-        } catch {}
+        } catch {
+          // ignore, token stays empty
+        }
       }
 
       if (!token) {
@@ -334,11 +352,14 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
   return (
     <>
-      {/* Load Turnstile script — only in production */}
+      {/* ── Load Turnstile script — only in production ─────────────────────
+          strategy="afterInteractive" ensures it loads after hydration.
+          onLoad fires once the script is ready → we render the widget then.  */}
       {TURNSTILE_SITE_KEY && !IS_DEV && (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
+          onLoad={handleScriptLoad}
         />
       )}
 
@@ -404,7 +425,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
               {/* Full Name */}
               {mode === 'signup' && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Full Name <span className="text-red-400">*</span></label>   
+                  <label className="block text-sm font-medium text-foreground mb-2">Full Name <span className="text-red-400">*</span></label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <input type="text" name="name" value={formData.name} onChange={handleInputChange} onBlur={handleBlur}
@@ -431,7 +452,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Email Address <span className="text-red-400">*</span></label> 
+                <label className="block text-sm font-medium text-foreground mb-2">Email Address <span className="text-red-400">*</span></label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <input type="email" name="email" value={formData.email} onChange={handleInputChange} onBlur={handleBlur}
@@ -466,8 +487,10 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
                 {mode === 'signup' && <PasswordStrength password={formData.password} />}
               </div>
 
-              {/* Turnstile container — only rendered in production */}
-              {TURNSTILE_SITE_KEY && !IS_DEV && <div ref={turnstileRef} />}
+              {/* Turnstile invisible container — only rendered in production */}
+              {TURNSTILE_SITE_KEY && !IS_DEV && (
+                <div ref={turnstileRef} className="hidden" />
+              )}
 
               {/* Global error/success */}
               <AnimatePresence>
