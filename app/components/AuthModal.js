@@ -145,7 +145,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
   const [captchaToken, setCaptchaToken] = useState('');
   const turnstileRef = useRef(null);
   const widgetIdRef = useRef(null);
-  const scriptLoadedRef = useRef(false); // ← track if script already loaded
+  const scriptLoadedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     email: '', password: '', name: '', phone: '', role: 'student',
@@ -162,8 +162,6 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
   }, []);
 
   // ── Cleanup Turnstile widget on mode change or unmount ─────────────────────
-  // NOTE: Rendering is now done in onLoad callback of <Script> below.
-  //       This effect only handles cleanup + re-render if script already loaded.
   useEffect(() => {
     if (IS_DEV || !TURNSTILE_SITE_KEY) return;
 
@@ -173,22 +171,22 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     }
 
     return () => {
-      // Cleanup widget when mode changes or component unmounts
       if (widgetIdRef.current) {
         window.turnstile?.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
       setCaptchaToken('');
     };
-  }, [mode]); // re-run when mode switches login ↔ signup
+  }, [mode]);
 
   // ── Render Turnstile widget ────────────────────────────────────────────────
+  // FIX 1: size changed from 'invisible' to 'normal'
   const renderTurnstile = () => {
     if (!turnstileRef.current || widgetIdRef.current) return;
     widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
       sitekey: TURNSTILE_SITE_KEY,
       theme: 'dark',
-      size: 'invisible',
+      size: 'normal',
       callback: (token) => setCaptchaToken(token),
       'expired-callback': () => setCaptchaToken(''),
       'error-callback': () => setCaptchaToken(''),
@@ -244,32 +242,10 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
     // ── Turnstile verification — SKIPPED in development ───────────────────
     if (TURNSTILE_SITE_KEY && !IS_DEV) {
-      let token = captchaToken;
+      const token = captchaToken;
 
-      // If no token yet, execute the invisible challenge
-      if (!token) {
-        if (widgetIdRef.current === null) {
-          // Widget never rendered — script likely blocked by CSP
-          setError('Security check could not load. Please disable any ad blockers and try again.');
-          return;
-        }
-        try {
-          window.turnstile?.execute(widgetIdRef.current);
-          // Wait up to 8s for token
-          token = await new Promise((resolve) => {
-            let attempts = 0;
-            const interval = setInterval(() => {
-              attempts++;
-              const t = window.turnstile?.getResponse(widgetIdRef.current);
-              if (t) { clearInterval(interval); resolve(t); }
-              if (attempts > 80) { clearInterval(interval); resolve(''); }
-            }, 100);
-          });
-        } catch {
-          // ignore, token stays empty
-        }
-      }
-
+      // FIX 2: With 'normal' mode, token is set automatically via callback.
+      // No execute() polling needed. Just check if token exists.
       if (!token) {
         setError('Please complete the security check');
         return;
@@ -354,7 +330,7 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
     <>
       {/* ── Load Turnstile script — only in production ─────────────────────
           strategy="afterInteractive" ensures it loads after hydration.
-          onLoad fires once the script is ready → we render the widget then.  */}
+          onLoad fires once the script is ready → we render the widget then. */}
       {TURNSTILE_SITE_KEY && !IS_DEV && (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
@@ -487,9 +463,9 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
                 {mode === 'signup' && <PasswordStrength password={formData.password} />}
               </div>
 
-              {/* Turnstile invisible container — only rendered in production */}
+              {/* FIX 3: Turnstile container — visible, rendered in production only */}
               {TURNSTILE_SITE_KEY && !IS_DEV && (
-                <div ref={turnstileRef} className="hidden" />
+                <div ref={turnstileRef} />
               )}
 
               {/* Global error/success */}
