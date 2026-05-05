@@ -165,12 +165,18 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
   useEffect(() => {
     if (IS_DEV || !TURNSTILE_SITE_KEY) return;
 
-    // If script already loaded previously (e.g. mode switch), render immediately
-    if (scriptLoadedRef.current && turnstileRef.current && !widgetIdRef.current) {
-      renderTurnstile();
+    // Delay render to ensure React has fully committed the DOM after mode switch
+    let timer;
+    if (scriptLoadedRef.current) {
+      timer = setTimeout(() => {
+        if (turnstileRef.current && !widgetIdRef.current) {
+          renderTurnstile();
+        }
+      }, 100);
     }
 
     return () => {
+      clearTimeout(timer);
       if (widgetIdRef.current) {
         window.turnstile?.remove(widgetIdRef.current);
         widgetIdRef.current = null;
