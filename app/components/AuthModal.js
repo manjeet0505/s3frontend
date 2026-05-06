@@ -334,9 +334,6 @@ export default function AuthModal({ mode, onClose, onLogin, onModeChange }) {
 
   return (
     <>
-      {/* ── Load Turnstile script — only in production ─────────────────────
-          strategy="afterInteractive" ensures it loads after hydration.
-          onLoad fires once the script is ready → we render the widget then. */}
       {TURNSTILE_SITE_KEY && !IS_DEV && (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
