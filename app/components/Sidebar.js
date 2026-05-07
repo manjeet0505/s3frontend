@@ -14,7 +14,8 @@ import {
   Sparkles,
   LogOut,
   UserCircle,
-  X
+  X,
+  Brain
 } from 'lucide-react';
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { label: 'Mentors', href: '/dashboard/mentors', icon: Users },
   { label: 'Skill Gap', href: '/dashboard/skills', icon: TrendingUp },
   { label: 'Profile', href: '/dashboard/profile', icon: UserCircle },
+  { href: '/dashboard/interview', label: 'Interview', icon: Brain },
 ];
 
 // ── Desktop sidebar (unchanged behavior) ────────────────────────────────
