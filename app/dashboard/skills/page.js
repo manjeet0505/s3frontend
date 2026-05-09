@@ -1,598 +1,474 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  TrendingUp, Sparkles, RefreshCw, AlertCircle,
-  CheckCircle2, Clock, BookOpen, ExternalLink,
-  ChevronRight, Loader2, RotateCcw, Play,
-  Target, Zap, Award
+  TrendingUp, Sparkles, RefreshCw, AlertCircle, CheckCircle2,
+  Clock, BookOpen, ExternalLink, ChevronDown, ChevronUp,
+  Zap, Target, BarChart3, Brain, Flame, Lock, Unlock,
+  ArrowRight, Star, Activity,
 } from 'lucide-react';
-import { useAuth } from '@/app/lib/hooks/useAuth';
-import { skillsApi, progressApi } from '@/lib/api';
 
-const STATUS_CONFIG = {
-  not_started: {
-    label: 'Not Started',
-    color: 'text-muted-foreground',
-    bg: 'bg-secondary/40',
-    border: 'border-border/40',
-    dot: 'bg-muted-foreground',
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const PRIORITY_CONFIG = {
+  critical: {
+    label: 'Critical',
+    color: 'text-red-400',
+    bg: 'bg-red-500/10',
+    border: 'border-red-500/25',
+    dot: 'bg-red-500',
+    bar: 'bg-red-500',
   },
-  learning: {
-    label: 'Learning',
+  high: {
+    label: 'High',
+    color: 'text-amber-400',
+    bg: 'bg-amber-500/10',
+    border: 'border-amber-500/25',
+    dot: 'bg-amber-500',
+    bar: 'bg-amber-500',
+  },
+  medium: {
+    label: 'Medium',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10',
-    border: 'border-blue-500/30',
-    dot: 'bg-blue-400',
-  },
-  completed: {
-    label: 'Completed',
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/30',
-    dot: 'bg-emerald-400',
+    border: 'border-blue-500/25',
+    dot: 'bg-blue-500',
+    bar: 'bg-blue-400',
   },
 };
 
-const PRIORITY_COLORS = {
-  1: 'text-red-400 bg-red-500/10 border-red-500/30',
-  2: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
-  3: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
-  4: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+const READINESS_CONFIG = {
+  'Not Ready': { color: 'text-red-400', bg: 'from-red-500/20 to-red-600/10', ring: 'stroke-red-500' },
+  'Partially Ready': { color: 'text-amber-400', bg: 'from-amber-500/20 to-amber-600/10', ring: 'stroke-amber-500' },
+  'Almost Ready': { color: 'text-cyan-400', bg: 'from-cyan-500/20 to-cyan-600/10', ring: 'stroke-cyan-500' },
+  'Job Ready': { color: 'text-emerald-400', bg: 'from-emerald-500/20 to-emerald-600/10', ring: 'stroke-emerald-500' },
 };
 
-function SkeletonCard() {
-  return (
-    <div className="p-5 rounded-2xl border border-border/50 bg-card/60 animate-pulse space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-secondary/60" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-secondary/60 rounded w-32" />
-          <div className="h-3 bg-secondary/60 rounded w-24" />
-        </div>
-        <div className="w-20 h-7 bg-secondary/60 rounded-full" />
-      </div>
-      <div className="h-12 bg-secondary/60 rounded-xl" />
-      <div className="flex gap-2">
-        <div className="h-8 flex-1 bg-secondary/60 rounded-xl" />
-        <div className="h-8 flex-1 bg-secondary/60 rounded-xl" />
-      </div>
-    </div>
-  );
-}
+const TYPE_COLORS = {
+  free: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  free_audit: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  paid: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+};
 
-function CompletionRing({ percent }) {
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percent / 100) * circumference;
+function ReadinessRing({ score, label }) {
+  const cfg = READINESS_CONFIG[label] || READINESS_CONFIG['Partially Ready'];
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
 
   return (
-    <div className="relative w-28 h-28 flex items-center justify-center">
-      <svg className="absolute inset-0 -rotate-90" width="112" height="112">
-        <circle
-          cx="56" cy="56" r={radius}
-          stroke="hsl(var(--border))"
-          strokeWidth="8"
-          fill="none"
-        />
+    <div className="relative flex items-center justify-center w-36 h-36">
+      <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 128 128">
+        <circle cx="64" cy="64" r={r} fill="none" stroke="currentColor" strokeWidth="8" className="text-border/30" />
         <motion.circle
-          cx="56" cy="56" r={radius}
-          stroke="hsl(var(--primary))"
-          strokeWidth="8"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
+          cx="64" cy="64" r={r} fill="none" strokeWidth="8"
+          strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+          strokeLinecap="round"
+          className={cfg.ring}
         />
       </svg>
-      <div className="text-center">
-        <div className="font-display text-2xl font-bold text-foreground">{percent}%</div>
-        <div className="text-xs text-muted-foreground">done</div>
+      <div className="text-center z-10">
+        <motion.p
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4 }}
+          className={`text-3xl font-bold font-mono ${cfg.color}`}
+        >
+          {score}%
+        </motion.p>
+        <p className="text-xs text-muted-foreground mt-0.5">ready</p>
       </div>
     </div>
   );
 }
 
-function SkillCard({ skill, index, onStatusChange, updating }) {
-  const [expanded, setExpanded] = useState(false);
-  const status = STATUS_CONFIG[skill.status] || STATUS_CONFIG.not_started;
-  const priorityColor = PRIORITY_COLORS[skill.priority] || PRIORITY_COLORS[4];
-  const statuses = ['not_started', 'learning', 'completed'];
+function DemandBar({ score }) {
+  const color = score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-blue-500';
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${score}%` }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className={`h-full rounded-full ${color}`}
+        />
+      </div>
+      <span className="text-xs font-mono text-muted-foreground w-7 text-right">{score}%</span>
+    </div>
+  );
+}
 
-  function cycleStatus() {
-    const current = statuses.indexOf(skill.status || 'not_started');
-    const next = statuses[(current + 1) % statuses.length];
-    onStatusChange(skill.skill, next);
-  }
+function GapCard({ gap, index }) {
+  const [expanded, setExpanded] = useState(false);
+  const cfg = PRIORITY_CONFIG[gap.priority] || PRIORITY_CONFIG.medium;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.07 }}
-      className={`relative rounded-2xl border transition-all overflow-hidden ${
-        skill.status === 'completed'
-          ? 'border-emerald-500/30 bg-emerald-500/5'
-          : skill.status === 'learning'
-          ? 'border-blue-500/20 bg-blue-500/5'
-          : 'border-border/50 bg-card/60'
-      }`}
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.06 }}
+      className={`rounded-xl border ${cfg.border} ${cfg.bg} overflow-hidden`}
     >
-      {/* Top shimmer */}
-      <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${
-        skill.status === 'completed' ? 'via-emerald-500/50'
-        : skill.status === 'learning' ? 'via-blue-500/50'
-        : 'via-border'
-      } to-transparent`} />
-
-      <div className="p-5">
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-3">
-          {/* Priority badge */}
-          <div className={`flex-shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center text-xs font-bold ${priorityColor}`}>
-            {skill.priority}
+      {/* Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full p-4 flex items-start justify-between gap-3 text-left hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {/* Priority indicator */}
+          <div className="flex flex-col items-center gap-1 pt-0.5 shrink-0">
+            <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+            <span className="text-xs text-muted-foreground font-mono">{String(index + 1).padStart(2, '0')}</span>
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-display text-base font-bold text-foreground">{skill.skill}</h3>
-            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
-              <Clock className="w-3.5 h-3.5" />
-              ~{skill.estimated_days} days to learn
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-foreground capitalize">{gap.skill}</h3>
+              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                {cfg.label}
+              </span>
+              {gap.time_to_learn && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="w-3 h-3" />{gap.time_to_learn}
+                </span>
+              )}
             </div>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{gap.reason}</p>
           </div>
-
-          {/* Status badge — clickable to cycle */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={cycleStatus}
-            disabled={updating}
-            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${status.color} ${status.bg} ${status.border} disabled:opacity-50`}
-          >
-            {updating
-              ? <Loader2 className="w-3 h-3 animate-spin" />
-              : <div className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-            }
-            {status.label}
-          </motion.button>
         </div>
 
-        {/* Reason */}
-        {skill.reason && (
-          <p className="text-xs text-muted-foreground leading-relaxed mb-3 pl-11">
-            {skill.reason}
-          </p>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs text-muted-foreground">Market demand</p>
+            <div className="w-24 mt-1">
+              <DemandBar score={gap.demand_score || 50} />
+            </div>
+          </div>
+          {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </div>
+      </button>
 
-        {/* Resources toggle */}
-        {skill.resources?.length > 0 && (
-          <>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors pl-11 mb-1"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              {expanded ? 'Hide resources' : `View ${skill.resources.length} learning resources`}
-              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-            </button>
+      {/* Expanded content */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-3 border-t border-white/5 pt-3">
+              {/* Stats row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-2 rounded-lg bg-white/5">
+                  <p className="text-xs text-muted-foreground">Current level</p>
+                  <p className="text-sm font-medium text-foreground capitalize mt-0.5">{gap.current_level || 'None'}</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-white/5">
+                  <p className="text-xs text-muted-foreground">Time needed</p>
+                  <p className="text-sm font-medium text-foreground mt-0.5">{gap.time_to_learn || '—'}</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-white/5">
+                  <p className="text-xs text-muted-foreground">Market demand</p>
+                  <p className={`text-sm font-medium mt-0.5 capitalize ${cfg.color}`}>{gap.market_demand || '—'}</p>
+                </div>
+              </div>
 
-            <AnimatePresence>
-              {expanded && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="pl-11 pt-2 space-y-2">
-                    {skill.resources.map((r, i) => (
-                      <motion.a
+              {/* Resources */}
+              {gap.resources && gap.resources.length > 0 ? (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                    <BookOpen className="w-3 h-3" /> Free Learning Resources
+                  </p>
+                  <div className="space-y-2">
+                    {gap.resources.map((r, i) => (
+                      <a
                         key={i}
                         href={r.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/30 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
                       >
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                            {r.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{r.platform}</p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`text-xs px-1.5 py-0.5 rounded border shrink-0 ${TYPE_COLORS[r.type] || TYPE_COLORS.free}`}>
+                            {r.type === 'free_audit' ? 'Free' : r.type}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm text-foreground group-hover:text-primary transition-colors truncate">{r.title}</p>
+                            <p className="text-xs text-muted-foreground">{r.platform}</p>
+                          </div>
                         </div>
-                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 ml-3" />
-                      </motion.a>
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary shrink-0 ml-2 transition-colors" />
+                      </a>
                     ))}
                   </div>
-                </motion.div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 rounded-lg bg-white/5">
+                  <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                  Search "{gap.skill} tutorial" on YouTube or the official docs.
+                </div>
               )}
-            </AnimatePresence>
-          </>
-        )}
-
-        {/* Quick action buttons */}
-        <div className="flex gap-2 mt-3 pl-11">
-          {skill.status !== 'learning' && skill.status !== 'completed' && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onStatusChange(skill.skill, 'learning')}
-              disabled={updating}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-all disabled:opacity-50"
-            >
-              <Play className="w-3 h-3" />
-              Start Learning
-            </motion.button>
-          )}
-          {skill.status === 'learning' && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onStatusChange(skill.skill, 'completed')}
-              disabled={updating}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-all disabled:opacity-50"
-            >
-              <CheckCircle2 className="w-3 h-3" />
-              Mark Complete
-            </motion.button>
-          )}
-          {skill.status === 'completed' && (
-            <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
-              <Award className="w-3.5 h-3.5" />
-              Skill mastered!
             </div>
-          )}
-        </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
+function SkillPill({ skill, index }) {
+  return (
+    <motion.span
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.04 }}
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-400"
+    >
+      <CheckCircle2 className="w-3 h-3" />
+      {skill}
+    </motion.span>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
+
 export default function SkillsPage() {
-  const { getUserId } = useAuth();
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
-  const [updatingSkill, setUpdatingSkill] = useState(null);
-  const [resetConfirm, setResetConfirm] = useState(false);
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [showAll, setShowAll] = useState(false);
 
-  const userId = getUserId();
+  const userId = typeof window !== 'undefined'
+    ? (() => {
+        try {
+          const token = localStorage.getItem('authToken');
+          if (!token) return null;
+          return JSON.parse(atob(token.split('.')[1])).userId;
+        } catch { return null; }
+      })()
+    : null;
 
-  useEffect(() => {
-    if (userId) loadProgress();
+  const fetchResult = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/skills/gap/result?user_id=${userId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) setData(json.data);
+      }
+    } catch { /* no cached result — fine */ }
+    finally { setFetching(false); }
   }, [userId]);
 
-  async function loadProgress() {
+  useEffect(() => { fetchResult(); }, [fetchResult]);
+
+  const runAnalysis = async () => {
+    if (!userId) {
+      setError('Please log in to run skill gap analysis.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const res = await progressApi.get(userId);
-      setData(res.data);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/skills/gap?user_id=${userId}`);
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || json.detail || 'Analysis failed');
+      setData(json.data);
     } catch (err) {
-      if (err?.response?.status === 404) {
-        setData(null);
-      } else {
-        setError('Failed to load progress. Please try again.');
-      }
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function runAnalysis() {
-    setAnalyzing(true);
-    setError('');
-    try {
-      await skillsApi.getGap(userId);
-      await loadProgress();
-    } catch (err) {
-      setError(
-        err?.response?.data?.detail ||
-        'Analysis failed. Make sure your resume is uploaded first.'
-      );
-    } finally {
-      setAnalyzing(false);
-    }
-  }
-
-  async function handleStatusChange(skill, status) {
-    setUpdatingSkill(skill);
-    try {
-      await progressApi.update(userId, skill, status);
-      setData(prev => {
-        const updatedSkills = prev.skills.map(s =>
-          s.skill === skill ? { ...s, status } : s
-        );
-        const completed = updatedSkills.filter(s => s.status === 'completed').length;
-        const learning = updatedSkills.filter(s => s.status === 'learning').length;
-        const not_started = updatedSkills.filter(s => s.status === 'not_started').length;
-        const total = updatedSkills.length;
-        return {
-          ...prev,
-          skills: updatedSkills,
-          summary: {
-            ...prev.summary,
-            completed,
-            learning,
-            not_started,
-            completion_percent: total > 0 ? Math.round((completed / total) * 100) : 0,
-          }
-        };
-      });
-    } catch {
-      setError('Failed to update skill status. Try again.');
-    } finally {
-      setUpdatingSkill(null);
-    }
-  }
-
-  async function handleReset() {
-    try {
-      await progressApi.reset(userId);
-      setResetConfirm(false);
-      await loadProgress();
-    } catch {
-      setError('Failed to reset progress.');
-    }
-  }
-
-  const summary = data?.summary;
-  const skills = data?.skills || [];
-
-  // ai_summary is the GPT text — data.summary is the stats object
-  // They are different fields intentionally
-  const aiSummaryText = typeof data?.ai_summary === 'string' ? data.ai_summary : null;
+  const gaps = data?.gaps || [];
+  const filteredGaps = filterPriority === 'all'
+    ? gaps
+    : gaps.filter(g => g.priority === filterPriority);
+  const visibleGaps = showAll ? filteredGaps : filteredGaps.slice(0, 5);
+  const readinessCfg = READINESS_CONFIG[data?.readiness_label] || READINESS_CONFIG['Partially Ready'];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen px-4 py-8 md:px-8 max-w-3xl mx-auto space-y-8">
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-start justify-between"
-      >
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-orange-400" />
-            <span className="text-sm text-muted-foreground font-medium">AI Skill Analysis</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary mb-2">
+            <Brain className="w-3 h-3" /> AI-Powered Skill Analysis
           </div>
-          <h2 className="font-display text-2xl font-bold">Skill Gap Tracker</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Know exactly what to learn next to land your target role
+          <h1 className="text-2xl font-bold text-foreground">Skill Gap Analysis</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {data?.market_data_available
+              ? `Analysed against ${data.jobs_analysed}+ live job postings`
+              : 'Personalized gap analysis based on your resume'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {data && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setResetConfirm(true)}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-card/40 text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset
-            </motion.button>
+        <button
+          onClick={runAnalysis}
+          disabled={loading || fetching}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 shrink-0"
+        >
+          {loading ? (
+            <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Analysing...</>
+          ) : (
+            <><Sparkles className="w-3.5 h-3.5" /> {data ? 'Refresh' : 'Run Analysis'}</>
           )}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={runAnalysis}
-            disabled={analyzing || loading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 shadow-lg shadow-primary/25"
-          >
-            {analyzing
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
-              : <><Zap className="w-4 h-4" /> {data ? 'Re-analyze' : 'Run Analysis'}</>
-            }
-          </motion.button>
-        </div>
-      </motion.div>
+        </button>
+      </div>
 
-      {/* Reset confirm */}
-      <AnimatePresence>
-        {resetConfirm && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="flex items-center justify-between px-5 py-4 rounded-2xl bg-red-500/10 border border-red-500/30"
-          >
-            <p className="text-sm text-red-400 font-medium">
-              Reset all progress back to not started?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setResetConfirm(false)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold border border-border/60 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReset}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 transition-colors"
-              >
-                Yes, Reset
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Error ──────────────────────────────────────────────────────────── */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+        </motion.div>
+      )}
 
-      {/* Error */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex items-start gap-3 px-5 py-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400"
-          >
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <p className="text-sm">{error}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Loading */}
-      {loading && (
+      {/* ── Loading skeleton ───────────────────────────────────────────────── */}
+      {(loading || fetching) && !data && (
         <div className="space-y-4">
-          {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+          <div className="h-36 rounded-2xl bg-secondary/30 animate-pulse" />
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 rounded-xl bg-secondary/30 animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
+          ))}
         </div>
       )}
 
-      {/* Analyzing state */}
-      {analyzing && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-20 text-center"
-        >
-          <div className="relative w-16 h-16 mb-5">
-            <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-            <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-            <div className="absolute inset-3 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary" />
-            </div>
+      {/* ── Empty state ────────────────────────────────────────────────────── */}
+      {!loading && !fetching && !data && !error && (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Target className="w-8 h-8 text-primary" />
           </div>
-          <h3 className="font-display text-lg font-bold mb-2">Analyzing your skill gaps...</h3>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            GPT-4o is comparing your resume skills against job requirements. This takes ~15 seconds.
-          </p>
-        </motion.div>
-      )}
-
-      {/* No data yet */}
-      {!loading && !analyzing && !data && !error && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-28 text-center"
-        >
-          <div className="w-20 h-20 rounded-3xl bg-orange-500/10 flex items-center justify-center mb-5">
-            <Target className="w-9 h-9 text-orange-400" />
+          <div>
+            <p className="font-semibold text-foreground">No analysis yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Upload your resume first, then run the analysis to see your gaps.
+            </p>
           </div>
-          <h3 className="font-display text-xl font-bold mb-2">No analysis yet</h3>
-          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-6">
-            Run an AI analysis to identify exactly which skills you need to land your
-            target role, with resources and timelines for each.
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={runAnalysis}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/25 hover:opacity-90 transition-all"
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all"
           >
-            <Zap className="w-4 h-4" />
-            Run Skill Gap Analysis
-          </motion.button>
-        </motion.div>
+            <Sparkles className="w-4 h-4" /> Run Analysis
+          </button>
+        </div>
       )}
 
-      {/* Results */}
-      {!loading && !analyzing && data && skills.length > 0 && (
-        <>
-          {/* Summary row */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-4 gap-4"
-          >
-            {/* Completion ring */}
-            <div className="md:col-span-1 flex flex-col items-center justify-center p-5 rounded-2xl border border-border/50 bg-card/60">
-              <CompletionRing percent={summary?.completion_percent || 0} />
-              <p className="text-xs text-muted-foreground mt-3 text-center">Overall Progress</p>
-            </div>
+      {/* ── Data loaded ────────────────────────────────────────────────────── */}
+      {data && !fetching && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
 
-            {/* Stats */}
-            <div className="md:col-span-3 grid grid-cols-3 gap-3">
-              {[
-                { label: 'Not Started', value: summary?.not_started || 0, color: 'text-muted-foreground', bg: 'bg-secondary/40', border: 'border-border/40' },
-                { label: 'Learning', value: summary?.learning || 0, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-                { label: 'Completed', value: summary?.completed || 0, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-              ].map((s, i) => (
-                <motion.div
-                  key={s.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.15 + i * 0.05 }}
-                  className={`flex flex-col items-center justify-center py-5 rounded-2xl border ${s.bg} ${s.border}`}
-                >
-                  <span className={`text-3xl font-bold font-display ${s.color}`}>{s.value}</span>
-                  <span className="text-xs text-muted-foreground mt-1">{s.label}</span>
-                </motion.div>
-              ))}
-
-              {/* Time estimate */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 }}
-                className="col-span-3 flex items-center gap-3 px-5 py-3.5 rounded-2xl border border-orange-500/20 bg-orange-500/5"
-              >
-                <Clock className="w-5 h-5 text-orange-400 flex-shrink-0" />
+          {/* Hero card */}
+          <div className={`p-6 rounded-2xl border border-border/60 bg-gradient-to-br ${readinessCfg.bg} backdrop-blur-sm`}>
+            <div className="flex items-center gap-6 flex-wrap">
+              <ReadinessRing score={data.overall_readiness || 0} label={data.readiness_label} />
+              <div className="flex-1 min-w-[200px] space-y-3">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    ~{summary?.total_estimated_days || 0} days to bridge all gaps
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {data.target_role
-                      ? `Based on requirements for ${data.target_role}`
-                      : 'Based on your matched job requirements'}
-                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Target role</p>
+                  <p className="text-lg font-bold text-foreground capitalize mt-0.5">{data.target_role || 'Software Developer'}</p>
+                  <span className={`text-sm font-medium ${readinessCfg.color}`}>{data.readiness_label}</span>
                 </div>
-              </motion.div>
-            </div>
-          </motion.div>
 
-          {/* AI Summary — only render if it's a string */}
-          {aiSummaryText && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex items-start gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15"
-            >
-              <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-semibold text-primary mb-1">AI Summary</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">{aiSummaryText}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center p-2 rounded-lg bg-white/5">
+                    <p className={`text-xl font-bold ${data.critical_count > 0 ? 'text-red-400' : 'text-emerald-400'}`}>{data.critical_count || 0}</p>
+                    <p className="text-xs text-muted-foreground">Critical</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/5">
+                    <p className="text-xl font-bold text-foreground">{data.total_gaps || 0}</p>
+                    <p className="text-xs text-muted-foreground">Gaps found</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/5">
+                    <p className="text-xl font-bold text-emerald-400">{(data.strong_skills || []).length}</p>
+                    <p className="text-xs text-muted-foreground">Strong</p>
+                  </div>
+                </div>
               </div>
-            </motion.div>
+            </div>
+
+            {data.market_insight && (
+              <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
+                <Activity className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">{data.market_insight}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Strong skills */}
+          {data.strong_skills?.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Already strong
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {data.strong_skills.map((s, i) => <SkillPill key={s} skill={s} index={i} />)}
+              </div>
+            </div>
           )}
 
-          {/* Hint */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.25 }}
-            className="flex items-center gap-2 text-xs text-muted-foreground"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            Click a status badge or use the buttons below each skill to track your progress
-          </motion.div>
+          {/* Gaps section */}
+          {gaps.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <Flame className="w-4 h-4 text-amber-400" />
+                  Skill gaps — sorted by learning roadmap
+                </p>
 
-          {/* Skill cards */}
-          <div className="space-y-4">
-            {skills.map((skill, i) => (
-              <SkillCard
-                key={skill.skill}
-                skill={skill}
-                index={i}
-                onStatusChange={handleStatusChange}
-                updating={updatingSkill === skill.skill}
-              />
-            ))}
-          </div>
-        </>
+                {/* Priority filter */}
+                <div className="flex gap-1.5">
+                  {['all', 'critical', 'high', 'medium'].map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setFilterPriority(p)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all capitalize
+                        ${filterPriority === p
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {visibleGaps.map((gap, i) => (
+                  <GapCard key={gap.skill + i} gap={gap} index={i} />
+                ))}
+              </div>
+
+              {filteredGaps.length > 5 && (
+                <button
+                  onClick={() => setShowAll(!showAll)}
+                  className="w-full mt-3 py-2.5 rounded-xl border border-border bg-card/50 text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  {showAll ? <><ChevronUp className="w-4 h-4" /> Show less</> : <><ChevronDown className="w-4 h-4" /> Show {filteredGaps.length - 5} more gaps</>}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Re-run hint */}
+          <p className="text-xs text-muted-foreground text-center">
+            Results based on live job market data. Refresh monthly for updated insights.
+          </p>
+        </motion.div>
       )}
     </div>
   );
