@@ -827,9 +827,31 @@ export default function ResumeAnalyzerPage() {
   const [improveSection, setImproveSection] = useState(null);
   const fileRef = useRef();
 
-  const userId = typeof window !== 'undefined'
-    ? (localStorage.getItem('user_id') || 'demo_user')
-    : 'demo_user';
+  const userId = (() => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) return 'demo_user';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.userId || 'demo_user';
+  } catch { return 'demo_user'; }
+})();
+
+  /* ── Load saved analysis on mount (persists across navigation) ── */
+  useEffect(() => {
+    try {
+      const saved   = localStorage.getItem('s3_resume_analysis');
+      const savedJD = localStorage.getItem('s3_resume_jd');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setAnalysisData(parsed);
+        setPhase('results');
+      }
+      if (savedJD) {
+        setJdText(savedJD);
+        setShowJD(true);
+      }
+    } catch (_) { /* ignore corrupt data */ }
+  }, []);
 
   /* ── Upload + Analyze ── */
   const handleAnalyze = async (f) => {
@@ -846,12 +868,15 @@ export default function ResumeAnalyzerPage() {
 
       const res  = await fetch(`${API_BASE}/resume/analyze`, { method: 'POST', body: form });
       const json = await res.json();
-
+      console.log('[DEBUG] API response:', json);        
+      console.log('[DEBUG] json.data:', json?.data); 
       if (!res.ok) throw new Error(json.detail || 'Analysis failed');
       if (!json.success) throw new Error(json.error || 'Analysis failed');
 
       setAnalysisData(json.data);
       setPhase('results');
+       localStorage.setItem('s3_resume_analysis', JSON.stringify(json.data));
+      if (jdText.trim()) localStorage.setItem('s3_resume_jd', jdText.trim());
     } catch (e) {
       setError(e.message);
       setPhase('upload');
@@ -910,7 +935,7 @@ export default function ResumeAnalyzerPage() {
 
           {phase === 'results' && (
             <button
-              onClick={() => { setPhase('upload'); setFile(null); setAnalysisData(null); }}
+              onClick={() => { setPhase('upload'); setFile(null); setAnalysisData(null); localStorage.removeItem('s3_resume_analysis'); localStorage.removeItem('s3_resume_jd');  }}
               style={{
                 background: 'rgba(0,229,203,0.08)', border: '1px solid rgba(0,229,203,0.25)',
                 borderRadius: 10, padding: '8px 16px', cursor: 'pointer', color: '#00e5cb',
