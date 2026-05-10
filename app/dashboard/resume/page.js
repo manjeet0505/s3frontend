@@ -1,693 +1,1237 @@
 'use client';
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Upload, FileText, CheckCircle2, AlertCircle,
-  Sparkles, User, Mail, Phone, MapPin, Briefcase,
-  GraduationCap, Star, Loader2, X,
-  RefreshCw, Target, Zap, TrendingUp, AlertTriangle,
-  ChevronDown, ChevronUp, Award, Search, Lightbulb,
-  BarChart3, Shield
+  Upload, FileText, Sparkles, Zap, Shield, Crown,
+  CheckCircle2, AlertCircle, ChevronDown, ChevronUp,
+  Copy, Check, X, RefreshCw, ArrowLeft,
+  Briefcase, GraduationCap, User, Code, Target,
+  TrendingUp, Award, Eye, EyeOff, AlertTriangle
 } from 'lucide-react';
-import { useAuth } from '@/app/lib/hooks/useAuth';
-import { resumeApi } from '@/lib/api';
 
-// ── Animated Background ──────────────────────────────
-function PageBackground() {
+/* ─── Global Styles ─────────────────────────────────────────────────────────── */
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  .resume-root * { box-sizing: border-box; }
+
+  .resume-root {
+    font-family: 'DM Sans', sans-serif;
+    background: #050510;
+    min-height: 100vh;
+    color: #e8e8f8;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .dot-grid {
+    background-image: radial-gradient(rgba(0, 229, 203, 0.12) 1px, transparent 1px);
+    background-size: 32px 32px;
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 100%);
+  }
+
+  .glow-orb {
+    position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+    filter: blur(120px); opacity: 0.12;
+  }
+
+  .syne { font-family: 'Syne', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  .glass-card {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(0,229,203,0.2);
+    background: rgba(255,255,255,0.04);
+    transition: all 0.2s;
+  }
+
+  .upload-zone {
+    border: 1.5px dashed rgba(0,229,203,0.35);
+    border-radius: 20px;
+    background: rgba(0,229,203,0.03);
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: rgba(0,229,203,0.7);
+    background: rgba(0,229,203,0.07);
+  }
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,229,203,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .score-ring-wrap {
+    filter: drop-shadow(0 0 20px rgba(0,229,203,0.3));
+  }
+
+  .dim-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .section-card {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    transition: all 0.25s;
+    overflow: hidden;
+    position: relative;
+  }
+  .section-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0,229,203,0.25);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .improve-btn {
+    background: linear-gradient(135deg, rgba(0,229,203,0.15), rgba(0,229,203,0.05));
+    border: 1px solid rgba(0,229,203,0.3);
+    color: #00e5cb;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .improve-btn:hover {
+    background: rgba(0,229,203,0.2);
+    border-color: #00e5cb;
+    box-shadow: 0 0 16px rgba(0,229,203,0.2);
+  }
+
+  .variation-card {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    transition: all 0.25s;
+    overflow: hidden;
+  }
+  .variation-card:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .variation-card.selected {
+    border-color: rgba(0,229,203,0.5);
+    background: rgba(0,229,203,0.04);
+  }
+
+  .copy-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .copy-btn:hover {
+    border-color: rgba(255,255,255,0.25);
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+  }
+  .copy-btn.copied {
+    border-color: rgba(16,185,129,0.5);
+    color: #10b981;
+    background: rgba(16,185,129,0.08);
+  }
+
+  .scan-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00e5cb, transparent);
+    animation: scanline 2s linear infinite;
+  }
+  @keyframes scanline {
+    0%   { transform: translateY(0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(400px); opacity: 0; }
+  }
+
+  .pulse-ring {
+    animation: pulseRing 2s ease-out infinite;
+  }
+  @keyframes pulseRing {
+    0%   { transform: scale(1);   opacity: 0.7; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+
+  .drawer-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(4px);
+    z-index: 50;
+  }
+
+  .drawer-panel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(640px, 92vw);
+    background: #0b0b1a;
+    border-left: 1px solid rgba(255,255,255,0.08);
+    z-index: 51;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+`;
+
+/* ─── Helpers ────────────────────────────────────────────────────────────────── */
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const DIMENSION_META = {
+  contact_info:          { label: 'Contact Info',    icon: User,       weight: '5%'  },
+  professional_summary:  { label: 'Summary',         icon: FileText,   weight: '10%' },
+  work_experience:       { label: 'Experience',      icon: Briefcase,  weight: '35%' },
+  skills_section:        { label: 'Skills',          icon: Code,       weight: '15%' },
+  education:             { label: 'Education',       icon: GraduationCap, weight: '10%' },
+  ats_optimization:      { label: 'ATS Score',       icon: Target,     weight: '25%' },
+};
+
+function scoreColor(s) {
+  if (s >= 80) return '#10b981';
+  if (s >= 65) return '#00e5cb';
+  if (s >= 50) return '#f59e0b';
+  if (s >= 35) return '#f97316';
+  return '#f43f5e';
+}
+
+function scoreGrade(s) {
+  if (s >= 85) return 'A';
+  if (s >= 75) return 'B+';
+  if (s >= 65) return 'B';
+  if (s >= 55) return 'C+';
+  if (s >= 40) return 'C';
+  return 'D';
+}
+
+/* ─── Score Ring ─────────────────────────────────────────────────────────────── */
+function ScoreRing({ score, label, ringColor, animated = true }) {
+  const [displayed, setDisplayed] = useState(animated ? 0 : score);
+  const R = 78, C = 2 * Math.PI * R;
+  const pct = displayed / 100;
+
+  useEffect(() => {
+    if (!animated) return;
+    let start = null;
+    const duration = 1600;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 4);
+      setDisplayed(Math.round(ease * score));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    const id = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(id);
+  }, [score, animated]);
+
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 500, height: 500,
-          background: 'radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)',
-          top: -100, right: -50,
-        }}
-        animate={{ scale: [1, 1.1, 1], rotate: [0, 30, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 400, height: 400,
-          background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)',
-          bottom: -80, left: -80,
-        }}
-        animate={{ scale: [1, 1.15, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.025]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(99,102,241,1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,1) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px',
-        }}
-      />
+    <div className="score-ring-wrap" style={{ position: 'relative', display: 'inline-block' }}>
+      <svg width="196" height="196" viewBox="0 0 196 196">
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        {/* Track */}
+        <circle cx="98" cy="98" r={R} fill="none"
+          stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+        {/* Fill */}
+        <circle cx="98" cy="98" r={R} fill="none"
+          stroke={ringColor || scoreColor(score)}
+          strokeWidth="10"
+          strokeDasharray={C}
+          strokeDashoffset={C - pct * C}
+          strokeLinecap="round"
+          transform="rotate(-90 98 98)"
+          filter="url(#glow)"
+          style={{ transition: 'stroke-dashoffset 0.05s linear' }}
+        />
+        {/* Score */}
+        <text x="98" y="90" textAnchor="middle"
+          fill="#f0f0ff" fontSize="44"
+          fontFamily="JetBrains Mono, monospace" fontWeight="700">
+          {displayed}
+        </text>
+        <text x="98" y="110" textAnchor="middle"
+          fill="rgba(240,240,255,0.4)" fontSize="11"
+          fontFamily="DM Sans, sans-serif" letterSpacing="2">
+          /100
+        </text>
+        <text x="98" y="130" textAnchor="middle"
+          fill={ringColor || scoreColor(score)} fontSize="13"
+          fontFamily="Syne, sans-serif" fontWeight="600">
+          {label}
+        </text>
+      </svg>
     </div>
   );
 }
 
-// ── Upload Zone ──────────────────────────────────────
-function UploadZone({ onUpload, uploading }) {
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef();
+/* ─── Dimension Bar ──────────────────────────────────────────────────────────── */
+function DimensionBar({ dimKey, dimData, delay = 0 }) {
+  const [width, setWidth] = useState(0);
+  const meta = DIMENSION_META[dimKey] || { label: dimKey, icon: Target, weight: '' };
+  const Icon = meta.icon;
+  const score = dimData?.score ?? 0;
+  const color = scoreColor(score);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/pdf') onUpload(file);
-  };
+  useEffect(() => {
+    const t = setTimeout(() => setWidth(score), delay + 200);
+    return () => clearTimeout(t);
+  }, [score, delay]);
 
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    if (file) onUpload(file);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: `rgba(${color === '#10b981' ? '16,185,129' : color === '#00e5cb' ? '0,229,203' : color === '#f59e0b' ? '245,158,11' : '244,63,94'},0.12)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Icon size={14} color={color} />
+          </div>
+          <span style={{ fontSize: 13, color: 'rgba(240,240,255,0.75)', fontWeight: 500 }}>
+            {meta.label}
+          </span>
+          <span style={{ fontSize: 10, color: 'rgba(240,240,255,0.3)', fontFamily: 'JetBrains Mono' }}>
+            {meta.weight}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 700, color
+          }}>{score}</span>
+          <span style={{
+            fontSize: 10, fontFamily: 'Syne', fontWeight: 700,
+            color, background: `${color}18`, padding: '1px 6px', borderRadius: 4
+          }}>{scoreGrade(score)}</span>
+        </div>
+      </div>
+      <div style={{
+        height: 5, borderRadius: 4,
+        background: 'rgba(255,255,255,0.05)',
+        overflow: 'hidden'
+      }}>
+        <div className="dim-bar-fill" style={{
+          width: `${width}%`,
+          background: `linear-gradient(90deg, ${color}99, ${color})`,
+          boxShadow: `0 0 8px ${color}60`
+        }} />
+      </div>
+      {dimData?.feedback && (
+        <p style={{ fontSize: 11, color: 'rgba(240,240,255,0.4)', margin: 0, lineHeight: 1.5 }}>
+          {dimData.feedback}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ─── Section Card ───────────────────────────────────────────────────────────── */
+function SectionCard({ section, targetRole, jobDescription, onImproveStart }) {
+  const score = section.score ?? 50;
+  const color = scoreColor(score);
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="section-card" style={{ borderLeftColor: color, borderLeftWidth: 3 }}>
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="syne" style={{ fontSize: 14, fontWeight: 700, color: '#e8e8f8' }}>
+              {section.name}
+            </span>
+            <span style={{
+              fontSize: 11, fontFamily: 'JetBrains Mono', fontWeight: 700, color,
+              background: `${color}15`, padding: '2px 7px', borderRadius: 4
+            }}>{score}</span>
+          </div>
+          <button className="improve-btn" onClick={() => onImproveStart(section)}>
+            <Sparkles size={12} />
+            Improve
+          </button>
+        </div>
+
+        {section.issues?.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {section.issues.slice(0, expanded ? undefined : 2).map((issue, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <AlertTriangle size={11} color="#f59e0b" style={{ marginTop: 2, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: 'rgba(240,240,255,0.55)', lineHeight: 1.5 }}>{issue}</span>
+              </div>
+            ))}
+            {section.issues.length > 2 && (
+              <button onClick={() => setExpanded(!expanded)} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(0,229,203,0.7)', fontSize: 11, textAlign: 'left', padding: 0,
+                display: 'flex', alignItems: 'center', gap: 4, marginTop: 2
+              }}>
+                {expanded ? <ChevronUp size={11}/> : <ChevronDown size={11}/>}
+                {expanded ? 'Show less' : `+${section.issues.length - 2} more`}
+              </button>
+            )}
+          </div>
+        )}
+
+        {section.quick_wins?.length > 0 && (
+          <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {section.quick_wins.slice(0, 2).map((win, i) => (
+              <span key={i} style={{
+                fontSize: 10, color: 'rgba(0,229,203,0.7)',
+                background: 'rgba(0,229,203,0.06)', border: '1px solid rgba(0,229,203,0.15)',
+                padding: '2px 7px', borderRadius: 4
+              }}>✦ {win}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Variation Card ─────────────────────────────────────────────────────────── */
+const VARIATION_ICONS = { shield: Shield, zap: Zap, crown: Crown };
+
+function VariationCard({ variation, isSelected, onSelect }) {
+  const [copied, setCopied] = useState(false);
+  const [showContent, setShowContent] = useState(false);
+  const Icon = VARIATION_ICONS[variation.icon] || Sparkles;
+  const accent = variation.accent || '#00e5cb';
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(variation.content || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={handleDrop}
-      onClick={() => !uploading && inputRef.current?.click()}
-      className={`relative rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden
-        ${dragging ? 'border-primary bg-primary/10 scale-[1.01]' : 'border-border/60 hover:border-primary/50 hover:bg-primary/5 bg-card/40'}
-        ${uploading ? 'pointer-events-none' : ''}`}
+    <div
+      className={`variation-card ${isSelected ? 'selected' : ''}`}
+      onClick={onSelect}
+      style={{ borderColor: isSelected ? `${accent}50` : undefined }}
     >
-      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-primary/40 rounded-tl-xl" />
-      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-primary/40 rounded-tr-xl" />
-      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-primary/40 rounded-bl-xl" />
-      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-primary/40 rounded-br-xl" />
-      <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-        <AnimatePresence mode="wait">
-          {uploading ? (
-            <motion.div key="uploading" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="flex flex-col items-center gap-4">
-              <div className="relative w-16 h-16">
-                <motion.div className="absolute inset-0 rounded-full border-2 border-primary/30" animate={{ scale: [1, 1.4, 1], opacity: [0.6, 0, 0.6] }} transition={{ duration: 1.5, repeat: Infinity }} />
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Loader2 className="w-7 h-7 text-primary animate-spin" />
-                </div>
+      {/* Header */}
+      <div style={{
+        padding: '14px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        background: isSelected ? `${accent}08` : 'transparent'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: `${accent}18`,
+              border: `1px solid ${accent}30`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Icon size={15} color={accent} />
+            </div>
+            <div>
+              <div className="syne" style={{ fontSize: 14, fontWeight: 700, color: '#e8e8f8' }}>
+                {variation.label}
               </div>
-              <div>
-                <p className="font-semibold text-foreground text-lg">Analyzing with AI...</p>
-                <p className="text-sm text-muted-foreground mt-1">Deep analysis in progress — this takes ~15 seconds</p>
-              </div>
-              <div className="flex gap-1 mt-2">
-                {[0, 1, 2].map(i => (
-                  <motion.div key={i} className="w-2 h-2 rounded-full bg-primary" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }} />
-                ))}
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div key="idle" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="flex flex-col items-center gap-4">
-              <motion.div animate={{ y: dragging ? -8 : 0 }} className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                <Upload className="w-7 h-7 text-white" />
-              </motion.div>
-              <div>
-                <p className="font-semibold text-foreground text-lg">{dragging ? 'Drop it here!' : 'Drop your resume here'}</p>
-                <p className="text-sm text-muted-foreground mt-1">or <span className="text-primary font-medium">click to browse</span> · PDF only</p>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/60 border border-border/40">
-                <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-xs text-muted-foreground">AI-powered deep analysis</span>
+              <div style={{ fontSize: 11, color: 'rgba(240,240,255,0.4)' }}>{variation.tagline}</div>
+            </div>
+          </div>
+          <div style={{
+            fontSize: 10, color: accent, background: `${accent}15`,
+            padding: '3px 8px', borderRadius: 6, fontFamily: 'JetBrains Mono', fontWeight: 600
+          }}>
+            {variation.ats_boost}
+          </div>
+        </div>
+      </div>
+
+      {/* Improvements */}
+      {variation.what_changed?.length > 0 && (
+        <div style={{ padding: '10px 16px', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {variation.what_changed.map((change, i) => (
+            <span key={i} style={{
+              fontSize: 10, color: 'rgba(240,240,255,0.6)',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              padding: '3px 8px', borderRadius: 5
+            }}>✓ {change}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Content Preview */}
+      <div style={{ padding: '0 16px 14px' }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowContent(!showContent); }}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: `${accent}99`, fontSize: 11, padding: 0,
+            display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8
+          }}
+        >
+          {showContent ? <EyeOff size={11} /> : <Eye size={11} />}
+          {showContent ? 'Hide rewrite' : 'Preview rewrite'}
+        </button>
+
+        <AnimatePresence>
+          {showContent && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{
+                background: 'rgba(0,0,0,0.3)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 10, padding: 12, marginBottom: 10,
+                fontSize: 12, color: 'rgba(240,240,255,0.75)',
+                lineHeight: 1.7, whiteSpace: 'pre-wrap',
+                maxHeight: 200, overflowY: 'auto'
+              }}>
+                {variation.content}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-      <input ref={inputRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
-    </motion.div>
-  );
-}
 
-// ── Score Ring ───────────────────────────────────────
-function ScoreRing({ score }) {
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (score / 100) * circumference;
-
-  const getColor = (s) => {
-    if (s >= 80) return '#10b981';
-    if (s >= 65) return '#3b82f6';
-    if (s >= 50) return '#f59e0b';
-    return '#ef4444';
-  };
-
-  const getLabel = (s) => {
-    if (s >= 80) return 'Excellent';
-    if (s >= 65) return 'Good';
-    if (s >= 50) return 'Average';
-    return 'Needs Work';
-  };
-
-  const color = getColor(score);
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative w-32 h-32">
-        <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-border/30" />
-          <motion.circle
-            cx="60" cy="60" r={radius} fill="none"
-            stroke={color} strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: circumference - progress }}
-            transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <motion.span
-            className="text-3xl font-bold font-display"
-            style={{ color }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            {score}
-          </motion.span>
-          <span className="text-xs text-muted-foreground">/100</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 10, color: 'rgba(240,240,255,0.3)' }}>
+            Best for: {variation.best_for}
+          </span>
+          <button className={`copy-btn ${copied ? 'copied' : ''}`} onClick={handleCopy}>
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
         </div>
-      </div>
-      <span className="text-sm font-semibold" style={{ color }}>{getLabel(score)}</span>
-    </div>
-  );
-}
-
-// ── Score Bar ────────────────────────────────────────
-function ScoreBar({ label, score, color, reasoning, delay = 0 }) {
-  const [showReason, setShowReason] = useState(false);
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold" style={{ color }}>{score}/100</span>
-          {reasoning && (
-            <button onClick={() => setShowReason(!showReason)} className="text-muted-foreground hover:text-foreground transition-colors">
-              {showReason ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="h-1.5 rounded-full bg-border/30 overflow-hidden">
-        <motion.div
-          className="h-full rounded-full"
-          style={{ background: color }}
-          initial={{ width: 0 }}
-          animate={{ width: `${score}%` }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay }}
-        />
-      </div>
-      <AnimatePresence>
-        {showReason && reasoning && (
-          <motion.p
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="text-xs text-muted-foreground bg-secondary/40 rounded-lg px-3 py-2 mt-1"
-          >
-            {reasoning}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ── Skill Badge ──────────────────────────────────────
-function SkillBadge({ skill, delay = 0, variant = 'default' }) {
-  const variants = {
-    default: 'bg-secondary/60 border-border/50 text-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-primary',
-    missing: 'bg-red-500/10 border-red-500/30 text-red-400',
-    strength: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-  };
-  return (
-    <motion.span
-      initial={{ opacity: 0, scale: 0.7 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay, type: 'spring', bounce: 0.35 }}
-      whileHover={{ scale: 1.07 }}
-      className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors cursor-default ${variants[variant]}`}
-    >
-      {skill}
-    </motion.span>
-  );
-}
-
-// ── Info Row ─────────────────────────────────────────
-function InfoRow({ icon: Icon, label, value }) {
-  if (!value) return null;
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-border/30 last:border-0">
-      <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-3.5 h-3.5 text-primary" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium text-foreground truncate">{value}</p>
       </div>
     </div>
   );
 }
 
-// ── Experience Card ──────────────────────────────────
-function ExperienceCard({ job, index }) {
-  return (
-    <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + index * 0.08 }} className="relative flex gap-4 pb-6 last:pb-0">
-      <div className="flex flex-col items-center">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center flex-shrink-0 shadow-md shadow-violet-500/20 z-10">
-          <Briefcase className="w-3.5 h-3.5 text-white" />
-        </div>
-        <div className="w-px flex-1 bg-border/50 mt-2" />
-      </div>
-      <div className="flex-1 pt-1 pb-4">
-        <p className="font-semibold text-foreground text-sm">{job.title || job.role || job.position || job.job_title || 'Role'}</p>
-        <p className="text-xs text-primary font-medium mt-0.5">{job.company || job.company_name || job.organization || ''}</p>
-        {(job.duration || job.period || job.dates || job.start_date) && (
-          <p className="text-xs text-muted-foreground mt-0.5">{job.duration || job.period || job.dates || `${job.start_date ?? ''} – ${job.end_date ?? 'Present'}`}</p>
-        )}
-        {Array.isArray(job.responsibilities) && job.responsibilities.length > 0 && (
-          <ul className="mt-2 space-y-1">
-            {job.responsibilities.slice(0, 3).map((r, i) => (
-              <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                <span className="text-primary mt-0.5">•</span>{r}
-              </li>
-            ))}
-          </ul>
-        )}
-        {Array.isArray(job.achievements) && job.achievements.length > 0 && (
-          <ul className="mt-1.5 space-y-1">
-            {job.achievements.map((a, i) => (
-              <li key={i} className="text-xs text-emerald-400 flex gap-1.5">
-                <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0" />{a}
-              </li>
-            ))}
-          </ul>
-        )}
-        {typeof job.description === 'string' && (
-          <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{job.description}</p>
-        )}
-      </div>
-    </motion.div>
-  );
-}
+/* ─── Improvement Drawer ─────────────────────────────────────────────────────── */
+function ImprovementDrawer({ section, targetRole, jobDescription, onClose }) {
+  const [loading, setLoading]     = useState(true);
+  const [result, setResult]       = useState(null);
+  const [error, setError]         = useState(null);
+  const [selected, setSelected]   = useState(null);
+  const [jdVisible, setJdVisible] = useState(false);
 
-// ── Education Card ───────────────────────────────────
-function EducationCard({ edu, index }) {
-  return (
-    <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + index * 0.08 }} className="relative flex gap-4 pb-6 last:pb-0">
-      <div className="flex flex-col items-center">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20 z-10">
-          <GraduationCap className="w-3.5 h-3.5 text-white" />
-        </div>
-        <div className="w-px flex-1 bg-border/50 mt-2" />
-      </div>
-      <div className="flex-1 pt-1 pb-4">
-        <p className="font-semibold text-foreground text-sm">{edu.degree || edu.qualification || edu.course || 'Degree'}</p>
-        <p className="text-xs text-emerald-400 font-medium mt-0.5">{edu.institution || edu.school || edu.university || ''}</p>
-        {(edu.year || edu.graduation_year || edu.period) && (
-          <p className="text-xs text-muted-foreground mt-0.5">{edu.year || edu.graduation_year || edu.period}</p>
-        )}
-        {edu.score && <p className="text-xs text-muted-foreground mt-0.5">Score: {edu.score}</p>}
-      </div>
-    </motion.div>
-  );
-}
+  useEffect(() => {
+    if (!section) return;
+    fetchImprovements();
+  }, [section]);
 
-// ── Section Card wrapper ─────────────────────────────
-function SectionCard({ children, delay = 0, className = '' }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className={`p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm ${className}`}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function SectionHeader({ icon: Icon, iconBg, iconColor, title, subtitle }) {
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center`}>
-        <Icon className={`w-4 h-4 ${iconColor}`} />
-      </div>
-      <div>
-        <h3 className="font-display text-base font-bold">{title}</h3>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
-
-// ── Main Page ────────────────────────────────────────
-export default function ResumePage() {
-  const { getUserId } = useAuth();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  const userId = getUserId();
-
-  useEffect(() => { fetchProfile(); }, [userId]);
-
-  async function fetchProfile() {
-    if (!userId) { setLoading(false); return; }
-    setLoading(true);
+  const fetchImprovements = async () => {
+    setLoading(true); setError(null);
     try {
-      const res = await resumeApi.getProfile(userId);
-      setProfile(res.data);
-    } catch (err) {
-      if (err?.response?.status !== 404) setError('Failed to load profile. Please refresh.');
-      setProfile(null);
+      const res = await fetch(`${API_BASE}/resume/improve-section`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          section_name: section.name,
+          section_content: section.raw_content || '',
+          target_role: targetRole || 'Professional',
+          job_description: jobDescription || null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed');
+      setResult(data.data);
+    } catch (e) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleUpload(file) {
-    if (!userId) return;
-    setUploading(true);
-    setError('');
-    setSuccess('');
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      await resumeApi.upload(formData, userId);
-      setSuccess('Resume analyzed successfully! Deep analysis complete.');
-      await fetchProfile();
-    } catch (err) {
-      setError(err?.response?.data?.detail || 'Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  const p = profile?.profile || profile || null;
-  const hasProfile = !!(p && (p.name || p.skills || p.experience));
-
-  const skills = p?.skills || [];
-  const experience = p?.experience || p?.work_experience || [];
-  const education = p?.education || [];
-  const score = p?.ai_profile_score || 0;
-  const scoreBreakdown = p?.score_breakdown || {};
-  const scoreReasoning = p?.score_reasoning || {};
-  const strengths = p?.strengths || [];
-  const improvementAreas = p?.improvement_areas || [];
-  const missingKeywords = p?.missing_keywords || [];
-  const atsAnalysis = p?.ats_analysis || null;
-  const sectionRewrites = p?.section_rewrites || null;
-  const overallVerdict = p?.overall_verdict || '';
-
-  // Score bar config
-  const scoreBars = [
-    { key: 'skills_score', label: 'Skills', color: '#3b82f6' },
-    { key: 'projects_score', label: 'Projects', color: '#8b5cf6' },
-    { key: 'experience_score', label: 'Experience', color: '#06b6d4' },
-    { key: 'education_score', label: 'Education', color: '#10b981' },
-    { key: 'impact_score', label: 'Impact & Achievements', color: '#f59e0b' },
-    { key: 'ats_score', label: 'ATS Optimization', color: '#ec4899' },
-    { key: 'completeness_score', label: 'Completeness', color: '#6366f1' },
-  ].filter(b => scoreBreakdown[b.key] !== undefined);
+  };
 
   return (
     <>
-      <PageBackground />
-      <div className="relative max-w-6xl mx-auto space-y-6">
+      {/* Backdrop */}
+      <motion.div
+        className="drawer-backdrop"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose}
+      />
 
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+      {/* Panel */}
+      <motion.div
+        className="drawer-panel"
+        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+      >
+        {/* Panel Header */}
+        <div style={{
+          padding: '20px 24px',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          position: 'sticky', top: 0, background: '#0b0b1a', zIndex: 2
+        }}>
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-muted-foreground font-medium">Resume</span>
+            <div className="syne" style={{ fontSize: 16, fontWeight: 700, color: '#e8e8f8' }}>
+              ✦ AI Rewrite Studio
             </div>
-            <h2 className="font-display text-3xl font-bold">Your Resume</h2>
-            <p className="text-muted-foreground mt-1">Upload your PDF and let AI extract your profile</p>
+            <div style={{ fontSize: 12, color: 'rgba(240,240,255,0.4)', marginTop: 2 }}>
+              {section?.name} · 3 variations generated
+            </div>
           </div>
-          {hasProfile && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              onClick={() => document.getElementById('reupload')?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/60 bg-secondary/40 hover:bg-secondary/80 text-sm font-medium transition-all"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Re-upload
-            </motion.button>
-          )}
-        </motion.div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={fetchImprovements} style={{
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: 'rgba(255,255,255,0.6)'
+            }}>
+              <RefreshCw size={14} />
+            </button>
+            <button onClick={onClose} style={{
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: 'rgba(255,255,255,0.6)'
+            }}>
+              <X size={14} />
+            </button>
+          </div>
+        </div>
 
-        {/* Status messages */}
-        <AnimatePresence>
-          {success && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-medium">
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />{success}
-              <button onClick={() => setSuccess('')} className="ml-auto"><X className="w-4 h-4" /></button>
+        <div style={{ padding: 24, flex: 1 }}>
+          {/* Original Issues */}
+          {result?.original_issues?.length > 0 && (
+            <div style={{
+              background: 'rgba(244,63,94,0.06)',
+              border: '1px solid rgba(244,63,94,0.15)',
+              borderRadius: 12, padding: 14, marginBottom: 20
+            }}>
+              <div style={{ fontSize: 11, color: '#f43f5e', fontFamily: 'Syne', fontWeight: 700,
+                marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Issues Found
+              </div>
+              {result.original_issues.map((iss, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
+                  <span style={{ color: '#f43f5e', fontSize: 13, flexShrink: 0 }}>✕</span>
+                  <span style={{ fontSize: 12, color: 'rgba(240,240,255,0.65)', lineHeight: 1.5 }}>{iss}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Loading */}
+          {loading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="shimmer" style={{
+                  height: 120, borderRadius: 14,
+                  background: 'rgba(255,255,255,0.03)'
+                }} />
+              ))}
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <div className="mono" style={{ fontSize: 12, color: 'rgba(0,229,203,0.6)' }}>
+                  ✦ Generating 3 AI variations...
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && !loading && (
+            <div style={{
+              background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)',
+              borderRadius: 12, padding: 16, textAlign: 'center'
+            }}>
+              <AlertCircle size={24} color="#f43f5e" style={{ marginBottom: 8 }} />
+              <div style={{ fontSize: 13, color: '#f43f5e' }}>{error}</div>
+              <button onClick={fetchImprovements} className="improve-btn" style={{ margin: '12px auto 0' }}>
+                <RefreshCw size={12} /> Retry
+              </button>
+            </div>
+          )}
+
+          {/* Variations */}
+          {result && !loading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {result.variations?.map((v) => (
+                <VariationCard
+                  key={v.id}
+                  variation={v}
+                  isSelected={selected === v.id}
+                  onSelect={() => setSelected(v.id === selected ? null : v.id)}
+                />
+              ))}
+
+              {/* Pro Tip */}
+              {result.pro_tip && (
+                <div style={{
+                  background: 'rgba(0,229,203,0.05)',
+                  border: '1px solid rgba(0,229,203,0.15)',
+                  borderRadius: 12, padding: 14, marginTop: 4
+                }}>
+                  <div style={{ fontSize: 11, color: '#00e5cb', fontFamily: 'Syne', fontWeight: 700,
+                    marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    ✦ Pro Tip
+                  </div>
+                  <p style={{ fontSize: 12, color: 'rgba(240,240,255,0.65)', margin: 0, lineHeight: 1.6 }}>
+                    {result.pro_tip}
+                  </p>
+                </div>
+              )}
+
+              {/* Keywords */}
+              {result.keywords_to_add?.length > 0 && (
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: 'rgba(240,240,255,0.4)', marginBottom: 8,
+                    fontFamily: 'Syne', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Keywords to Add
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {result.keywords_to_add.map((kw, i) => (
+                      <span key={i} style={{
+                        fontSize: 11, color: '#f59e0b',
+                        background: 'rgba(245,158,11,0.08)',
+                        border: '1px solid rgba(245,158,11,0.2)',
+                        padding: '3px 9px', borderRadius: 5, fontFamily: 'JetBrains Mono'
+                      }}>{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+/* ─── Scanning Animation ─────────────────────────────────────────────────────── */
+const SCAN_STEPS = [
+  'Extracting resume structure...',
+  'Analyzing work experience bullets...',
+  'Counting metrics and achievements...',
+  'Evaluating ATS compatibility...',
+  'Scoring 6 resume dimensions...',
+  'Generating improvement insights...',
+];
+
+function ScanningScreen() {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setStep(s => Math.min(s + 1, SCAN_STEPS.length - 1)), 900);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div style={{
+      minHeight: '70vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 40, padding: 40
+    }}>
+      {/* Animated ring */}
+      <div style={{ position: 'relative', width: 120, height: 120 }}>
+        <div className="pulse-ring" style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          border: '2px solid rgba(0,229,203,0.4)'
+        }} />
+        <div style={{
+          position: 'absolute', inset: 8, borderRadius: '50%',
+          border: '2px solid rgba(0,229,203,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <FileText size={36} color="#00e5cb" />
+        </div>
+        <div className="scan-line" style={{
+          position: 'absolute', top: 0, left: 0, right: 0
+        }} />
+      </div>
+
+      {/* Steps */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 320 }}>
+        {SCAN_STEPS.map((s, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: i <= step ? 1 : 0.2, x: 0 }}
+            transition={{ delay: i * 0.05, duration: 0.3 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+          >
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+              background: i < step ? 'rgba(16,185,129,0.2)' : i === step ? 'rgba(0,229,203,0.15)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${i < step ? '#10b981' : i === step ? '#00e5cb' : 'rgba(255,255,255,0.1)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              {i < step && <Check size={10} color="#10b981" />}
+              {i === step && (
+                <div style={{
+                  width: 6, height: 6, borderRadius: '50%', background: '#00e5cb',
+                  animation: 'pulseRing 1s ease-out infinite'
+                }} />
+              )}
+            </div>
+            <span className="mono" style={{
+              fontSize: 12,
+              color: i < step ? '#10b981' : i === step ? '#00e5cb' : 'rgba(240,240,255,0.2)'
+            }}>{s}</span>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Page ──────────────────────────────────────────────────────────────── */
+export default function ResumeAnalyzerPage() {
+  const [phase, setPhase]             = useState('upload');   // upload | scanning | results
+  const [dragging, setDragging]       = useState(false);
+  const [file, setFile]               = useState(null);
+  const [jdText, setJdText]           = useState('');
+  const [showJD, setShowJD]           = useState(false);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [error, setError]             = useState(null);
+  const [improveSection, setImproveSection] = useState(null);
+  const fileRef = useRef();
+
+  const userId = typeof window !== 'undefined'
+    ? (localStorage.getItem('user_id') || 'demo_user')
+    : 'demo_user';
+
+  /* ── Upload + Analyze ── */
+  const handleAnalyze = async (f) => {
+    const chosenFile = f || file;
+    if (!chosenFile) return;
+    setPhase('scanning');
+    setError(null);
+
+    try {
+      const form = new FormData();
+      form.append('file', chosenFile);
+      form.append('user_id', userId);
+      if (jdText.trim().length > 50) form.append('job_description', jdText.trim());
+
+      const res  = await fetch(`${API_BASE}/resume/analyze`, { method: 'POST', body: form });
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json.detail || 'Analysis failed');
+      if (!json.success) throw new Error(json.error || 'Analysis failed');
+
+      setAnalysisData(json.data);
+      setPhase('results');
+    } catch (e) {
+      setError(e.message);
+      setPhase('upload');
+    }
+  };
+
+  /* ── Drag & Drop ── */
+  const onDrop = useCallback((e) => {
+    e.preventDefault(); setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f?.type === 'application/pdf') { setFile(f); handleAnalyze(f); }
+  }, [jdText]);
+
+  const onFileChange = (e) => {
+    const f = e.target.files[0];
+    if (f) { setFile(f); handleAnalyze(f); }
+  };
+
+  const d = analysisData;
+  const dims = d?.dimensions || {};
+
+  return (
+    <div className="resume-root">
+      <style>{GLOBAL_CSS}</style>
+
+      {/* Background effects */}
+      <div className="dot-grid" />
+      <div className="glow-orb" style={{ width: 600, height: 600, top: -200, left: -200, background: '#00e5cb' }} />
+      <div className="glow-orb" style={{ width: 400, height: 400, bottom: -100, right: -100, background: '#7c3aed' }} />
+
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '32px 20px' }}>
+
+        {/* ── HEADER ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {phase === 'results' && (
+              <button onClick={() => setPhase('upload')} style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 10, padding: '8px 12px', cursor: 'pointer', color: 'rgba(240,240,255,0.6)',
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: 13
+              }}>
+                <ArrowLeft size={14} /> Back
+              </button>
+            )}
+            <div>
+              <h1 className="syne" style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#f0f0ff' }}>
+                Resume Intelligence
+              </h1>
+              <p style={{ margin: 0, fontSize: 12, color: 'rgba(240,240,255,0.4)', marginTop: 2 }}>
+                {phase === 'upload' ? '6-dimensional AI analysis · Real market scoring' :
+                 phase === 'scanning' ? 'Deep scanning in progress...' :
+                 `${d?.target_role || 'Resume'} · ${d?.experience_years || 0} yrs experience`}
+              </p>
+            </div>
+          </div>
+
+          {phase === 'results' && (
+            <button
+              onClick={() => { setPhase('upload'); setFile(null); setAnalysisData(null); }}
+              style={{
+                background: 'rgba(0,229,203,0.08)', border: '1px solid rgba(0,229,203,0.25)',
+                borderRadius: 10, padding: '8px 16px', cursor: 'pointer', color: '#00e5cb',
+                display: 'flex', alignItems: 'center', gap: 7, fontSize: 13,
+                fontFamily: 'DM Sans', fontWeight: 500
+              }}
+            >
+              <RefreshCw size={13} /> Re-analyze
+            </button>
+          )}
+        </div>
+
+        {/* ══ UPLOAD PHASE ══ */}
+        <AnimatePresence mode="wait">
+          {phase === 'upload' && (
+            <motion.div key="upload"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            >
+              {/* Error banner */}
+              {error && (
+                <div style={{
+                  background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)',
+                  borderRadius: 12, padding: '12px 16px', marginBottom: 20,
+                  display: 'flex', alignItems: 'center', gap: 10
+                }}>
+                  <AlertCircle size={16} color="#f43f5e" />
+                  <span style={{ fontSize: 13, color: '#f43f5e' }}>{error}</span>
+                </div>
+              )}
+
+              {/* Upload Zone */}
+              <div
+                className={`upload-zone ${dragging ? 'drag-over' : ''}`}
+                style={{ padding: '60px 40px', textAlign: 'center' }}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+                onClick={() => fileRef.current?.click()}
+              >
+                <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={onFileChange} />
+
+                <motion.div
+                  animate={{ y: dragging ? -8 : 0 }}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
+                >
+                  <div style={{
+                    width: 72, height: 72, borderRadius: 20,
+                    background: 'rgba(0,229,203,0.08)',
+                    border: '1px solid rgba(0,229,203,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    position: 'relative'
+                  }}>
+                    <Upload size={28} color="#00e5cb" />
+                    <div style={{
+                      position: 'absolute', inset: -8, borderRadius: 28,
+                      border: '1px dashed rgba(0,229,203,0.2)',
+                      animation: 'pulseRing 3s ease-out infinite'
+                    }} />
+                  </div>
+
+                  <div>
+                    <p className="syne" style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f0f0ff' }}>
+                      {file ? file.name : 'Drop your resume here'}
+                    </p>
+                    <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(240,240,255,0.4)' }}>
+                      {file ? 'Click to change · PDF only' : 'or click to browse · PDF only'}
+                    </p>
+                  </div>
+
+                  {file && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAnalyze(); }}
+                      style={{
+                        background: 'linear-gradient(135deg, #00e5cb, #00b8a3)',
+                        border: 'none', borderRadius: 12,
+                        padding: '12px 32px', cursor: 'pointer',
+                        color: '#050510', fontSize: 14,
+                        fontFamily: 'Syne, sans-serif', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        boxShadow: '0 0 24px rgba(0,229,203,0.3)'
+                      }}
+                    >
+                      <Sparkles size={15} /> Analyze Resume
+                    </button>
+                  )}
+                </motion.div>
+              </div>
+
+              {/* JD Toggle */}
+              <div style={{ marginTop: 16 }}>
+                <button
+                  onClick={() => setShowJD(!showJD)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'rgba(0,229,203,0.6)', fontSize: 13,
+                    display: 'flex', alignItems: 'center', gap: 6, padding: 4,
+                    fontFamily: 'DM Sans'
+                  }}
+                >
+                  {showJD ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  {showJD ? 'Hide job description' : '+ Paste job description for JD match %'}
+                </button>
+
+                <AnimatePresence>
+                  {showJD && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
+                      style={{ overflow: 'hidden', marginTop: 10 }}
+                    >
+                      <textarea
+                        value={jdText}
+                        onChange={e => setJdText(e.target.value)}
+                        placeholder="Paste the job description here to get JD match percentage and missing keywords..."
+                        style={{
+                          width: '100%', minHeight: 130,
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 12, padding: 14,
+                          color: 'rgba(240,240,255,0.75)', fontSize: 13,
+                          fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6,
+                          resize: 'vertical', outline: 'none'
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Feature tags */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 24 }}>
+                {['6 Scoring Dimensions', 'ATS Analysis', 'JD Match %', 'AI Section Rewrites', 'Zero Hallucinations'].map(f => (
+                  <span key={f} style={{
+                    fontSize: 11, color: 'rgba(240,240,255,0.4)',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    padding: '4px 10px', borderRadius: 20
+                  }}>✦ {f}</span>
+                ))}
+              </div>
             </motion.div>
           )}
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
-              <button onClick={() => setError('')} className="ml-auto"><X className="w-4 h-4" /></button>
+
+          {/* ══ SCANNING PHASE ══ */}
+          {phase === 'scanning' && (
+            <motion.div key="scanning"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            >
+              <ScanningScreen />
+            </motion.div>
+          )}
+
+          {/* ══ RESULTS PHASE ══ */}
+          {phase === 'results' && d && (
+            <motion.div key="results"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              {/* Score + Dimensions Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20, marginBottom: 20 }}>
+
+                {/* Score Ring Card */}
+                <div className="glass-card" style={{
+                  padding: 24, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 12
+                }}>
+                  <ScoreRing
+                    score={d.overall_score}
+                    label={d.label}
+                    ringColor={d.ring_color}
+                  />
+                  <div style={{ textAlign: 'center' }}>
+                    <div className="mono" style={{ fontSize: 11, color: 'rgba(240,240,255,0.3)',
+                      textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Overall Score
+                    </div>
+                    {d.ats_score !== undefined && (
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6,
+                        justifyContent: 'center' }}>
+                        <Target size={12} color="#f59e0b" />
+                        <span className="mono" style={{ fontSize: 12, color: '#f59e0b' }}>
+                          ATS: {d.ats_score}/100
+                        </span>
+                      </div>
+                    )}
+                    {d.jd_match !== null && d.jd_match !== undefined && (
+                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6,
+                        justifyContent: 'center' }}>
+                        <TrendingUp size={12} color="#a78bfa" />
+                        <span className="mono" style={{ fontSize: 12, color: '#a78bfa' }}>
+                          JD Match: {d.jd_match}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dimensions */}
+                <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div className="syne" style={{ fontSize: 13, fontWeight: 700, color: 'rgba(240,240,255,0.5)',
+                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
+                    Dimension Breakdown
+                  </div>
+                  {Object.entries(dims).map(([key, val], i) => (
+                    <DimensionBar key={key} dimKey={key} dimData={val} delay={i * 100} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Strengths + Critical Fixes */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                {/* Strengths */}
+                <div className="glass-card" style={{ padding: 20 }}>
+                  <div className="syne" style={{ fontSize: 12, fontWeight: 700, color: '#10b981',
+                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
+                    ✦ Top Strengths
+                  </div>
+                  {d.strengths?.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                      <CheckCircle2 size={13} color="#10b981" style={{ marginTop: 2, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: 'rgba(240,240,255,0.7)', lineHeight: 1.5 }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Critical Fixes */}
+                <div className="glass-card" style={{ padding: 20 }}>
+                  <div className="syne" style={{ fontSize: 12, fontWeight: 700, color: '#f43f5e',
+                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
+                    ⚠ Critical Fixes
+                  </div>
+                  {d.critical_fixes?.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                      <AlertCircle size={13} color="#f43f5e" style={{ marginTop: 2, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: 'rgba(240,240,255,0.7)', lineHeight: 1.5 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* JD Keywords */}
+              {(d.jd_matched_keywords?.length > 0 || d.jd_missing_keywords?.length > 0) && (
+                <div className="glass-card" style={{ padding: 20, marginBottom: 20 }}>
+                  <div className="syne" style={{ fontSize: 12, fontWeight: 700, color: 'rgba(240,240,255,0.5)',
+                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>
+                    JD Keyword Analysis
+                  </div>
+                  <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                    {d.jd_matched_keywords?.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 11, color: '#10b981', marginBottom: 7 }}>Matched Keywords</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                          {d.jd_matched_keywords.slice(0, 15).map((k, i) => (
+                            <span key={i} style={{
+                              fontSize: 11, color: '#10b981', background: 'rgba(16,185,129,0.08)',
+                              border: '1px solid rgba(16,185,129,0.2)', padding: '2px 8px', borderRadius: 5,
+                              fontFamily: 'JetBrains Mono'
+                            }}>{k}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {d.jd_missing_keywords?.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 11, color: '#f43f5e', marginBottom: 7 }}>Missing Keywords</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                          {d.jd_missing_keywords.slice(0, 15).map((k, i) => (
+                            <span key={i} style={{
+                              fontSize: 11, color: '#f43f5e', background: 'rgba(244,63,94,0.06)',
+                              border: '1px solid rgba(244,63,94,0.2)', padding: '2px 8px', borderRadius: 5,
+                              fontFamily: 'JetBrains Mono'
+                            }}>{k}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Section Cards */}
+              {d.sections?.length > 0 && (
+                <div>
+                  <div className="syne" style={{ fontSize: 13, fontWeight: 700, color: 'rgba(240,240,255,0.5)',
+                    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>
+                    Section Analysis · Click "Improve" for AI rewrites
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                    {d.sections.map((section, i) => (
+                      <motion.div key={i}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.06 }}
+                      >
+                        <SectionCard
+                          section={section}
+                          targetRole={d.target_role}
+                          jobDescription={jdText}
+                          onImproveStart={setImproveSection}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              <p className="text-sm text-muted-foreground">Loading your profile...</p>
-            </div>
-          </div>
-        ) : !hasProfile ? (
-          <div className="max-w-2xl mx-auto">
-            <UploadZone onUpload={handleUpload} uploading={uploading} />
-            <p className="text-center text-xs text-muted-foreground mt-4">
-              Your resume is processed securely. We extract skills, experience, and education.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-
-            {/* ── ROW 1: Profile + Score + Verdict ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-              {/* Profile card */}
-              <SectionCard delay={0.1} className="relative overflow-hidden">
-                <div className="absolute inset-0 opacity-40" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(59,130,246,0.12), transparent)' }} />
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
-                <div className="relative flex flex-col items-center text-center mb-5">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/25 mb-3">
-                    <User className="w-7 h-7 text-white" />
-                  </div>
-                  <h3 className="font-display text-lg font-bold">{p.name || p.full_name || 'Your Name'}</h3>
-                  {p.target_role && <p className="text-sm text-primary font-medium mt-0.5">{p.target_role}</p>}
-                  {p.experience_level && (
-                    <span className="mt-2 px-3 py-1 rounded-full bg-secondary/60 text-xs font-medium capitalize">{p.experience_level}</span>
-                  )}
-                  {p.summary && <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{p.summary}</p>}
-                </div>
-                <div className="relative space-y-0.5">
-                  <InfoRow icon={Mail} label="Email" value={p.email} />
-                  <InfoRow icon={Phone} label="Phone" value={p.phone || p.phone_number} />
-                  <InfoRow icon={MapPin} label="Location" value={p.location || p.address || p.city} />
-                  <InfoRow icon={Briefcase} label="Experience" value={p.total_experience_years != null ? `${p.total_experience_years} years` : null} />
-                </div>
-                <input id="reupload" type="file" accept=".pdf" className="hidden" onChange={(e) => { if (e.target.files[0]) handleUpload(e.target.files[0]); }} />
-              </SectionCard>
-
-              {/* AI Score card */}
-              <SectionCard delay={0.15}>
-                <SectionHeader icon={BarChart3} iconBg="bg-blue-500/15" iconColor="text-blue-400" title="AI Profile Score" subtitle="Honest industry benchmark" />
-                <div className="flex justify-center mb-5">
-                  <ScoreRing score={score} />
-                </div>
-                {scoreBars.length > 0 && (
-                  <div className="space-y-3">
-                    {scoreBars.map((bar, i) => (
-                      <ScoreBar
-                        key={bar.key}
-                        label={bar.label}
-                        score={scoreBreakdown[bar.key] || 0}
-                        color={bar.color}
-                        reasoning={scoreReasoning[bar.key.replace('_score', '_reasoning')]}
-                        delay={0.1 + i * 0.05}
-                      />
-                    ))}
-                  </div>
-                )}
-              </SectionCard>
-
-              {/* Verdict + ATS card */}
-              <div className="space-y-5">
-                {overallVerdict && (
-                  <SectionCard delay={0.2}>
-                    <SectionHeader icon={Award} iconBg="bg-yellow-500/15" iconColor="text-yellow-400" title="Recruiter Verdict" />
-                    <p className="text-sm text-muted-foreground leading-relaxed">{overallVerdict}</p>
-                  </SectionCard>
-                )}
-                {atsAnalysis && (
-                  <SectionCard delay={0.25}>
-                    <SectionHeader icon={Shield} iconBg="bg-emerald-500/15" iconColor="text-emerald-400" title="ATS Analysis" />
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${atsAnalysis.ats_friendly ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                        {atsAnalysis.ats_friendly ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                        {atsAnalysis.ats_friendly ? 'ATS Friendly' : 'ATS Issues Found'}
-                      </div>
-                      {atsAnalysis.keyword_density_score != null && (
-                        <span className="text-xs text-muted-foreground">Keyword density: {atsAnalysis.keyword_density_score}/100</span>
-                      )}
-                    </div>
-                    {Array.isArray(atsAnalysis.issues) && atsAnalysis.issues.length > 0 && (
-                      <ul className="space-y-1.5">
-                        {atsAnalysis.issues.map((issue, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                            <AlertTriangle className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />{issue}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </SectionCard>
-                )}
-              </div>
-            </div>
-
-            {/* ── ROW 2: Skills + Missing Keywords ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {skills.length > 0 && (
-                <SectionCard delay={0.2}>
-                  <SectionHeader icon={Star} iconBg="bg-yellow-500/15" iconColor="text-yellow-400" title="Skills" subtitle={`${skills.length} extracted by AI`} />
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map((skill, i) => <SkillBadge key={`${skill}-${i}`} skill={skill} delay={0.02 * i} />)}
-                  </div>
-                </SectionCard>
-              )}
-              {missingKeywords.length > 0 && (
-                <SectionCard delay={0.25}>
-                  <SectionHeader icon={Search} iconBg="bg-red-500/15" iconColor="text-red-400" title="Missing Keywords" subtitle="Add these to pass ATS filters" />
-                  <div className="flex flex-wrap gap-2">
-                    {missingKeywords.map((kw, i) => <SkillBadge key={`${kw}-${i}`} skill={kw} delay={0.02 * i} variant="missing" />)}
-                  </div>
-                </SectionCard>
-              )}
-            </div>
-
-            {/* ── ROW 3: Strengths + Improvements ── */}
-            {(strengths.length > 0 || improvementAreas.length > 0) && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {strengths.length > 0 && (
-                  <SectionCard delay={0.25}>
-                    <SectionHeader icon={TrendingUp} iconBg="bg-emerald-500/15" iconColor="text-emerald-400" title="Strengths" subtitle="What's working well" />
-                    <ul className="space-y-2">
-                      {strengths.map((s, i) => (
-                        <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i }}
-                          className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />{s}
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </SectionCard>
-                )}
-                {improvementAreas.length > 0 && (
-                  <SectionCard delay={0.3}>
-                    <SectionHeader icon={AlertTriangle} iconBg="bg-amber-500/15" iconColor="text-amber-400" title="Improvement Areas" subtitle="Fix these to get more interviews" />
-                    <ul className="space-y-2">
-                      {improvementAreas.map((area, i) => (
-                        <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i }}
-                          className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />{area}
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </SectionCard>
-                )}
-              </div>
-            )}
-
-            {/* ── ROW 4: Section Rewrites ── */}
-            {sectionRewrites && (sectionRewrites.summary || sectionRewrites.top_bullet_rewrite) && (
-              <SectionCard delay={0.3}>
-                <SectionHeader icon={Lightbulb} iconBg="bg-violet-500/15" iconColor="text-violet-400" title="AI Rewrite Suggestions" subtitle="Copy-paste ready improvements" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {sectionRewrites.summary && (
-                    <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20">
-                      <p className="text-xs font-semibold text-violet-400 mb-2 flex items-center gap-1.5">
-                        <Zap className="w-3 h-3" />Improved Summary
-                      </p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{sectionRewrites.summary}</p>
-                    </div>
-                  )}
-                  {sectionRewrites.top_bullet_rewrite && (
-                    <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                      <p className="text-xs font-semibold text-blue-400 mb-2 flex items-center gap-1.5">
-                        <Zap className="w-3 h-3" />Stronger Bullet Point
-                      </p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{sectionRewrites.top_bullet_rewrite}</p>
-                    </div>
-                  )}
-                </div>
-              </SectionCard>
-            )}
-
-            {/* ── ROW 5: Experience + Education ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {experience.length > 0 && (
-                <SectionCard delay={0.3}>
-                  <SectionHeader icon={Briefcase} iconBg="bg-violet-500/15" iconColor="text-violet-400" title="Experience" subtitle={`${experience.length} positions`} />
-                  <div>
-                    {experience.map((job, i) => <ExperienceCard key={i} job={job} index={i} />)}
-                  </div>
-                </SectionCard>
-              )}
-              {education.length > 0 && (
-                <SectionCard delay={0.35}>
-                  <SectionHeader icon={GraduationCap} iconBg="bg-emerald-500/15" iconColor="text-emerald-400" title="Education" subtitle={`${education.length} entries`} />
-                  <div>
-                    {education.map((edu, i) => <EducationCard key={i} edu={edu} index={i} />)}
-                  </div>
-                </SectionCard>
-              )}
-            </div>
-
-            {/* Update resume card */}
-            <SectionCard delay={0.35} className="border-dashed">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <RefreshCw className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Update Resume</p>
-                    <p className="text-xs text-muted-foreground">Upload a newer version to refresh your analysis</p>
-                  </div>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => document.getElementById('reupload')?.click()}
-                  disabled={uploading}
-                  className="flex items-center gap-2 py-2.5 px-4 rounded-xl border border-primary/30 text-primary text-sm font-medium hover:bg-primary/10 transition-all disabled:opacity-50"
-                >
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {uploading ? 'Uploading...' : 'Choose PDF'}
-                </motion.button>
-              </div>
-            </SectionCard>
-
-          </div>
-        )}
       </div>
-    </>
+
+      {/* ── IMPROVEMENT DRAWER ── */}
+      <AnimatePresence>
+        {improveSection && (
+          <ImprovementDrawer
+            section={improveSection}
+            targetRole={d?.target_role}
+            jobDescription={jdText}
+            onClose={() => setImproveSection(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
