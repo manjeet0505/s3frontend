@@ -214,7 +214,7 @@ const GLOBAL_CSS = `
 `;
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 const DIMENSION_META = {
   contact_info:          { label: 'Contact Info',    icon: User,       weight: '5%'  },
