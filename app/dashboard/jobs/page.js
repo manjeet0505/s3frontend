@@ -569,32 +569,40 @@ export default function JobsPage() {
   }
 
   async function handleSaveJob(job) {
-    const key = `${job.title}-${job.company}`;
-    if (savedIds.has(key)) return;
-    try {
-      const res = await fetch(`${API}/jobs/applications`, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({
-          user_id:     userId,
-          title:       job.title,
-          company:     job.company,
-          url:         job.url || '',
-          match_score: job.match_score || 0,
-          job_type:    job.job_type || 'fulltime',
-          location:    job.location || '',
-          salary:      job.salary || '',
-          status:      'saved',
-        }),
-      });
-      if (res.ok) {
-        setSavedIds(prev => new Set([...prev, key]));
-        await loadApplications();
-        setSuccess('Saved to tracker!');
-        setTimeout(() => setSuccess(''), 3000);
-      }
-    } catch {}
+  const key = `${job.title}-${job.company}`;
+  
+  // ── Agar already saved hai toh unsave karo ──
+  if (savedIds.has(key)) {
+    const app = apps.find(a => a.title === job.title && a.company === job.company);
+    if (app) await handleDelete(app.id);
+    return;
   }
+
+  // ── Naya save ──
+  try {
+    const res = await fetch(`${API}/jobs/applications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id:     userId,
+        title:       job.title,
+        company:     job.company,
+        url:         job.url || '',
+        match_score: job.match_score || 0,
+        job_type:    job.job_type || 'fulltime',
+        location:    job.location || '',
+        salary:      job.salary || '',
+        status:      'saved',
+      }),
+    });
+    if (res.ok) {
+      setSavedIds(prev => new Set([...prev, key]));
+      await loadApplications();
+      setSuccess('Saved to tracker!');
+      setTimeout(() => setSuccess(''), 3000);
+    }
+  } catch {}
+}
 
   async function handleStatusChange(appId, newStatus) {
     try {
@@ -613,17 +621,22 @@ export default function JobsPage() {
   }
 
   async function handleDelete(appId) {
-    try {
-      await fetch(`${API}/jobs/applications/${appId}?user_id=${userId}`, { method:'DELETE' });
-      setApps(prev => prev.filter(a => a.id !== appId));
-    } catch {}
-  }
-
-  function handleKanbanDrop(targetStatus) {
-    if (!draggingId || !dragCardRef.current) return;
-    handleStatusChange(draggingId, targetStatus);
-    dragCardRef.current = null;
-  }
+  try {
+    const appToDelete = apps.find(a => a.id === appId);  // ← pehle dhundho
+    await fetch(`${API}/jobs/applications/${appId}?user_id=${userId}`, { method: 'DELETE' });
+    setApps(prev => prev.filter(a => a.id !== appId));
+    
+    // ← savedIds se bhi hatao
+    if (appToDelete) {
+      const key = `${appToDelete.title}-${appToDelete.company}`;
+      setSavedIds(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  } catch {}
+}
 
   // Filter jobs
   const FILTERS = [

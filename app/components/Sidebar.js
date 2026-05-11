@@ -19,25 +19,23 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, exact: true },
-  { label: 'Resume', href: '/dashboard/resume', icon: FileText },
-  { label: 'Job Matches', href: '/dashboard/jobs', icon: Briefcase },
-  { label: 'Mentors', href: '/dashboard/mentors', icon: Users },
-  { label: 'Skill Gap', href: '/dashboard/skills', icon: TrendingUp },
-  { label: 'Profile', href: '/dashboard/profile', icon: UserCircle },
-  { href: '/dashboard/interview', label: 'Interview', icon: Brain },
+  { label: 'Overview',    href: '/dashboard',           icon: LayoutDashboard, exact: true },
+  { label: 'Resume',      href: '/dashboard/resume',    icon: FileText },
+  { label: 'Job Matches', href: '/dashboard/jobs',      icon: Briefcase },
+  { label: 'Mentors',     href: '/dashboard/mentors',   icon: Users },
+  { label: 'Skill Gap',   href: '/dashboard/skills',    icon: TrendingUp },
+  { label: 'Profile',     href: '/dashboard/profile',   icon: UserCircle },
+  { label: 'Interview',   href: '/dashboard/interview', icon: Brain },
 ];
 
-// ── Desktop sidebar (unchanged behavior) ────────────────────────────────
+/* ── Desktop Sidebar (lg and above) ──────────────────────────────────────────── */
 function DesktopSidebar({ user, onLogout }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
 
-  const isActive = (item) => {
-    if (item.exact) return pathname === item.href;
-    return pathname.startsWith(item.href);
-  };
+  const isActive = (item) =>
+    item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
   return (
     <motion.aside
@@ -92,7 +90,11 @@ function DesktopSidebar({ user, onLogout }) {
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                 />
               )}
-              <item.icon className={`w-5 h-5 flex-shrink-0 relative z-10 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+              <item.icon
+                className={`w-5 h-5 flex-shrink-0 relative z-10 transition-colors ${
+                  active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                }`}
+              />
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span
@@ -106,6 +108,7 @@ function DesktopSidebar({ user, onLogout }) {
                   </motion.span>
                 )}
               </AnimatePresence>
+              {/* Collapsed tooltip */}
               {collapsed && (
                 <div className="absolute left-full ml-3 px-2 py-1 rounded-lg bg-popover border border-border text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
                   {item.label}
@@ -141,7 +144,11 @@ function DesktopSidebar({ user, onLogout }) {
           <LogOut className="w-5 h-5 flex-shrink-0" />
           <AnimatePresence>
             {!collapsed && (
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
                 Logout
               </motion.span>
             )}
@@ -160,15 +167,13 @@ function DesktopSidebar({ user, onLogout }) {
   );
 }
 
-// ── Mobile drawer sidebar ────────────────────────────────────────────────
+/* ── Mobile Drawer (below lg = below 1024px) ─────────────────────────────────── */
 function MobileSidebar({ user, onLogout, open, onClose }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
 
-  const isActive = (item) => {
-    if (item.exact) return pathname === item.href;
-    return pathname.startsWith(item.href);
-  };
+  const isActive = (item) =>
+    item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
   const handleNav = (href) => {
     router.push(href);
@@ -179,22 +184,22 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop — only visible below lg */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           />
 
-          {/* Drawer */}
+          {/* Drawer — only visible below lg */}
           <motion.aside
             initial={{ x: -280 }}
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: 'spring', bounce: 0.1, duration: 0.4 }}
-            className="fixed top-0 left-0 z-50 flex flex-col h-screen w-64 border-r border-border/60 bg-card/95 backdrop-blur-xl md:hidden"
+            className="fixed top-0 left-0 z-50 flex flex-col h-screen w-64 border-r border-border/60 bg-card/95 backdrop-blur-xl lg:hidden"
           >
             {/* Background glow */}
             <div
@@ -202,7 +207,7 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
               style={{ background: 'radial-gradient(ellipse at top left, rgba(59,130,246,0.4), transparent 70%)' }}
             />
 
-            {/* Logo + close */}
+            {/* Logo + Close */}
             <div className="relative flex items-center justify-between px-4 py-5 border-b border-border/40">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/25">
@@ -210,7 +215,10 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
                 </div>
                 <span className="font-display font-bold text-base">S3 Dashboard</span>
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors">
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -236,7 +244,11 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
                         transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                       />
                     )}
-                    <item.icon className={`w-5 h-5 flex-shrink-0 relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <item.icon
+                      className={`w-5 h-5 flex-shrink-0 relative z-10 ${
+                        active ? 'text-primary' : 'text-muted-foreground'
+                      }`}
+                    />
                     <span className="relative z-10">{item.label}</span>
                   </button>
                 );
@@ -271,12 +283,12 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
   );
 }
 
-// ── Main export ──────────────────────────────────────────────────────────
+/* ── Main Export ─────────────────────────────────────────────────────────────── */
 export default function Sidebar({ user, onLogout, mobileOpen, onMobileClose }) {
   return (
     <>
       <DesktopSidebar user={user} onLogout={onLogout} />
-      <MobileSidebar user={user} onLogout={onLogout} open={mobileOpen} onClose={onMobileClose} />
+      <MobileSidebar  user={user} onLogout={onLogout} open={mobileOpen} onClose={onMobileClose} />
     </>
   );
 }
