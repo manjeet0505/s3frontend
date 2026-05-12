@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, Briefcase, Users,
   TrendingUp, ChevronLeft, ChevronRight, Sparkles,
-  LogOut, UserCircle, X, Brain
+  LogOut, UserCircle, X, Brain , Map
 } from 'lucide-react';
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { label: 'Skill Gap',   href: '/dashboard/skills',    icon: TrendingUp },
   { label: 'Profile',     href: '/dashboard/profile',   icon: UserCircle },
   { label: 'Interview',   href: '/dashboard/interview', icon: Brain },
+  { label: 'Roadmap', href: '/dashboard/roadmap', icon: Map },
 ];
 
 /* ─── Desktop Sidebar (lg: 1024px+) ─────────────────────────────────────────── */
