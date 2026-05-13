@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, Briefcase, Users,
   TrendingUp, ChevronLeft, ChevronRight, Sparkles,
-  LogOut, UserCircle, X, Brain , Map
+  LogOut, UserCircle, X, Brain, Map
 } from 'lucide-react';
 
 const navItems = [
@@ -17,25 +18,18 @@ const navItems = [
   { label: 'Skill Gap',   href: '/dashboard/skills',    icon: TrendingUp },
   { label: 'Profile',     href: '/dashboard/profile',   icon: UserCircle },
   { label: 'Interview',   href: '/dashboard/interview', icon: Brain },
-  { label: 'Roadmap', href: '/dashboard/roadmap', icon: Map },
+  { label: 'Roadmap',     href: '/dashboard/roadmap',   icon: Map },
 ];
 
 /* ─── Desktop Sidebar (lg: 1024px+) ─────────────────────────────────────────── */
 function DesktopSidebar({ user, onLogout }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const router   = useRouter();
 
   const isActive = (item) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
   return (
-    /*
-     * KEY FIX: Both CSS class AND inline style control display.
-     * - CSS `hidden lg:flex`  → handles Tailwind-aware environments
-     * - The wrapper div with className="hidden lg:block" → extra CSS guard
-     * This double-layer means even if one fails, the other catches it.
-     */
     <div className="hidden lg:block h-screen flex-shrink-0">
       <motion.aside
         animate={{ width: collapsed ? 72 : 240 }}
@@ -73,9 +67,11 @@ function DesktopSidebar({ user, onLogout }) {
           {navItems.map((item) => {
             const active = isActive(item);
             return (
-              <button
+              // ✅ FIXED: Link instead of button + router.push — enables prefetching
+              <Link
                 key={item.href}
-                onClick={() => router.push(item.href)}
+                href={item.href}
+                prefetch={true}
                 className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                   active
                     ? 'bg-primary/15 text-primary border border-primary/20'
@@ -108,7 +104,7 @@ function DesktopSidebar({ user, onLogout }) {
                     {item.label}
                   </div>
                 )}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -156,21 +152,15 @@ function DesktopSidebar({ user, onLogout }) {
 /* ─── Mobile Drawer (below lg: 0–1023px) ────────────────────────────────────── */
 function MobileSidebar({ user, onLogout, open, onClose }) {
   const pathname = usePathname();
-  const router   = useRouter();
 
   const isActive = (item) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
-
-  const handleNav = (href) => {
-    router.push(href);
-    onClose();
-  };
 
   return (
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop — only below lg via CSS */}
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -179,7 +169,7 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           />
 
-          {/* Drawer — only below lg via CSS */}
+          {/* Drawer */}
           <motion.aside
             initial={{ x: -280 }}
             animate={{ x: 0 }}
@@ -214,9 +204,12 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
               {navItems.map((item) => {
                 const active = isActive(item);
                 return (
-                  <button
+                  // ✅ FIXED: Link instead of button — prefetch + onClose on click
+                  <Link
                     key={item.href}
-                    onClick={() => handleNav(item.href)}
+                    href={item.href}
+                    prefetch={true}
+                    onClick={onClose}
                     className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       active
                         ? 'bg-primary/15 text-primary border border-primary/20'
@@ -232,7 +225,7 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
                     )}
                     <item.icon className={`w-5 h-5 flex-shrink-0 relative z-10 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
                     <span className="relative z-10">{item.label}</span>
-                  </button>
+                  </Link>
                 );
               })}
             </nav>

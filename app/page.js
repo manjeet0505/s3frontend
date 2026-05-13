@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { Brain, Briefcase, Users, TrendingUp, ArrowRight, Sparkles, ChevronRight, Moon, Sun, Zap } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import AuthModal from './components/AuthModal';
+import Footer from './components/Footer';
 
 const features = [
   {
@@ -475,6 +476,7 @@ export default function Home() {
           onModeChange={(mode) => setAuthModal(mode)}
         />
       )}
+       <Footer />
     </div>
   );
 }
