@@ -6,7 +6,7 @@ const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 function getToken() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return localStorage.getItem("authToken");
 }
 
 async function callOptimize(profileText, targetRole) {
