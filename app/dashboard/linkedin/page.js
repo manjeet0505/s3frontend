@@ -1,552 +1,563 @@
-'use client';
+"use client";
+import { useState, useRef } from "react";
 
-import { useState, useCallback } from 'react';
-import {
-  Linkedin, Sparkles, Copy, Check, ChevronDown, ChevronUp,
-  ArrowRight, TrendingUp, Zap, Target, Award, Eye,
-  Lightbulb, Star, RefreshCw, AlertCircle, CheckCircle2,
-  Flame, BarChart3, Tag, BookOpen
-} from 'lucide-react';
+// ── helpers ──────────────────────────────────────────────────────────────────
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-
-// ── helpers ──────────
 function getToken() {
-  try { return localStorage.getItem('token') || ''; } catch { return ''; }
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
 }
 
-function authHeaders() {
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` };
+async function callOptimize(profileText, targetRole) {
+  const res = await fetch(`${API}/api/linkedin/optimize`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ profile_text: profileText, target_role: targetRole }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Optimization failed");
+  }
+  return res.json();
 }
 
-function gradeColor(grade) {
-  const map = { 'A+': 'text-emerald-400', A: 'text-emerald-400', B: 'text-blue-400', C: 'text-yellow-400', D: 'text-red-400' };
-  return map[grade] || 'text-muted-foreground';
+// ── Score ring ────────────────────────────────────────────────────────────────
+function ScoreRing({ score, label, size = 80 }) {
+  const r = (size - 12) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color =
+    score >= 80 ? "#22c55e" : score >= 60 ? "#f59e0b" : "#ef4444";
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth={6} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke={color} strokeWidth={6}
+          strokeDasharray={`${dash} ${circ}`}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dasharray 1s ease" }}
+        />
+      </svg>
+      <span className="text-sm font-bold" style={{ color }}>{score}</span>
+      <span className="text-xs text-gray-400 text-center leading-tight max-w-[72px]">{label}</span>
+    </div>
+  );
 }
 
-function scoreColor(score) {
-  if (score >= 80) return 'text-emerald-400';
-  if (score >= 60) return 'text-blue-400';
-  if (score >= 40) return 'text-yellow-400';
-  return 'text-red-400';
+// ── Diff pill ─────────────────────────────────────────────────────────────────
+function DiffView({ original, optimized, label }) {
+  const [showing, setShowing] = useState("optimized");
+  return (
+    <div className="rounded-xl border border-gray-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-800/60 border-b border-gray-700">
+        <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">{label}</span>
+        <div className="flex gap-1">
+          {["original", "optimized"].map((v) => (
+            <button
+              key={v}
+              onClick={() => setShowing(v)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                showing === v
+                  ? v === "optimized"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-600 text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {v === "optimized" ? "✨ Optimized" : "📋 Original"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="p-4 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap min-h-[80px]">
+        {showing === "optimized" ? optimized : original || "Not provided"}
+      </div>
+    </div>
+  );
 }
 
-function impactBadge(impact) {
-  return impact === 'high'
-    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-    : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-}
-
-// ── CopyButton ─────────────────────────────────────────────────────────────────
-function CopyButton({ text, className = '' }) {
+// ── Copy button ───────────────────────────────────────────────────────────────
+function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
+  const copy = () => {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1500);
   };
   return (
     <button
-      onClick={handleCopy}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all
-        ${copied
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-          : 'bg-secondary/40 border-border/40 text-muted-foreground hover:text-foreground hover:border-border'
-        } ${className}`}
+      onClick={copy}
+      className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition"
     >
-      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? "✅ Copied" : "📋 Copy"}
     </button>
   );
 }
 
-// ── ScoreDial ──────────────────────────────────────────────────────────────────
-function ScoreDial({ score, label, size = 80 }) {
-  const r = 28;
-  const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  const color = score >= 80 ? '#34d399' : score >= 60 ? '#60a5fa' : score >= 40 ? '#fbbf24' : '#f87171';
+// ── Tag pill ──────────────────────────────────────────────────────────────────
+function Tag({ children, color = "blue" }) {
+  const colors = {
+    blue: "bg-blue-900/50 text-blue-300 border-blue-700",
+    green: "bg-green-900/50 text-green-300 border-green-700",
+    red: "bg-red-900/50 text-red-300 border-red-700",
+    yellow: "bg-yellow-900/50 text-yellow-300 border-yellow-700",
+    purple: "bg-purple-900/50 text-purple-300 border-purple-700",
+  };
   return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width={size} height={size} viewBox="0 0 64 64" className="-rotate-90">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="currentColor" strokeWidth="5" className="text-border/40" />
-        <circle
-          cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="5"
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 1s ease' }}
-        />
-      </svg>
-      <span className="text-xl font-black -mt-12 rotate-0" style={{ color }}>{score}</span>
-      <span className="text-[11px] text-muted-foreground mt-8 font-medium">{label}</span>
-    </div>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border font-medium ${colors[color]}`}>
+      {children}
+    </span>
   );
 }
 
-// ── DiffCard ───────────────────────────────────────────────────────────────────
-function DiffCard({ original, optimized, label, children }) {
-  const [showOrig, setShowOrig] = useState(false);
-  return (
-    <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border/30 bg-card/60">
-        <span className="text-sm font-semibold text-foreground">{label}</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowOrig(v => !v)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showOrig ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            {showOrig ? 'Hide original' : 'See original'}
-          </button>
-          {optimized && <CopyButton text={optimized} />}
-        </div>
-      </div>
-
-      {showOrig && original && (
-        <div className="px-5 py-4 bg-red-500/5 border-b border-red-500/10">
-          <p className="text-xs font-medium text-red-400/80 uppercase tracking-wider mb-2">Original</p>
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{original}</p>
-        </div>
-      )}
-
-      <div className="px-5 py-4 bg-emerald-500/5">
-        <p className="text-xs font-medium text-emerald-400/80 uppercase tracking-wider mb-2">Optimized</p>
-        {children || <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{optimized}</p>}
-      </div>
-    </div>
-  );
-}
-
-// ── TextArea ───────────────────────────────────────────────────────────────────
-function TextArea({ label, icon: Icon, placeholder, value, onChange, rows = 4, badge }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Icon className="w-4 h-4 text-primary" />
-        <label className="text-sm font-semibold text-foreground">{label}</label>
-        {badge && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold">
-            {badge}
-          </span>
-        )}
-      </div>
-      <textarea
-        rows={rows}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-border/50 bg-secondary/20 px-4 py-3 text-sm text-foreground
-          placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 focus:ring-1
-          focus:ring-primary/20 resize-none transition-all leading-relaxed"
-      />
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ══════════════════════════════════════════════════════════════════════════════
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function LinkedInOptimizerPage() {
-  const [form, setForm] = useState({ headline: '', about: '', experience: '', skills_section: '' });
+  const [profileText, setProfileText] = useState("");
+  const [targetRole, setTargetRole] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
-  const [result, setResult]   = useState(null);
-  const [activeTab, setActiveTab] = useState('headline');
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+  const [activeTab, setActiveTab] = useState("scores");
+  const resultsRef = useRef(null);
 
-  const update = (field) => (val) => setForm(f => ({ ...f, [field]: val }));
+  const charCount = profileText.length;
+  const charOk = charCount > 50 && charCount <= 15000;
 
-  // ── Submit ────────────────────────────────────────────────────────────────
-  const handleOptimize = useCallback(async () => {
-    setError('');
-    if (!form.headline && !form.about && !form.experience && !form.skills_section) {
-      setError('Please fill in at least one section before optimizing.');
-      return;
-    }
+  async function handleSubmit() {
+    if (!charOk || !targetRole.trim()) return;
     setLoading(true);
+    setError(null);
+    setResult(null);
     try {
-      const res = await fetch(`${API}/api/linkedin/optimize`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(form),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || 'Optimization failed');
-      setResult(json.data);
-      setActiveTab('headline');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const data = await callOptimize(profileText, targetRole);
+      setResult(data);
+      setActiveTab("scores");
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } catch (e) {
-      setError(e.message || 'Something went wrong. Please try again.');
+      setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [form]);
+  }
 
-  const summary = result?.optimization_summary;
-
-  // ── RESULT TABS ────────────────────────────────────────────────────────────
   const tabs = [
-    { id: 'headline',   label: 'Headline',   icon: Zap },
-    { id: 'about',      label: 'About',      icon: BookOpen },
-    { id: 'experience', label: 'Experience', icon: BarChart3 },
-    { id: 'skills',     label: 'Skills',     icon: Tag },
-    { id: 'tips',       label: 'Tips',       icon: Lightbulb },
+    { id: "scores", label: "📊 Scores" },
+    { id: "keywords", label: "🔍 Keywords" },
+    { id: "rewrites", label: "✨ Rewrites" },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="relative rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm p-8 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-indigo-500/5 pointer-events-none" />
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
-          <div className="relative flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                  <Linkedin className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black text-foreground tracking-tight">LinkedIn Optimizer</h1>
-                  <p className="text-xs text-muted-foreground font-medium">Powered by GPT-4o · Agent v1.0</p>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
-                Paste your current LinkedIn sections below. The agent rewrites your headline, about section,
-                and experience bullets for recruiter searchability and ATS keyword density.
-              </p>
-            </div>
-            {result && (
-              <button
-                onClick={() => { setResult(null); setForm({ headline: '', about: '', experience: '', skills_section: '' }); }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border/50 bg-secondary/30 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" /> Re-optimize
-              </button>
-            )}
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* ── Header ── */}
+      <div className="border-b border-gray-800 bg-gray-900/50 backdrop-blur">
+        <div className="max-w-4xl mx-auto px-6 py-5 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-lg font-bold">
+            in
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white">LinkedIn Optimizer</h1>
+            <p className="text-xs text-gray-400">
+              AI-powered 3-pass analysis — scores, keywords & full rewrite
+            </p>
+          </div>
+          <div className="ml-auto flex gap-2 text-xs text-gray-500">
+            <span className="bg-gray-800 px-2 py-1 rounded">GPT-4o</span>
+            <span className="bg-gray-800 px-2 py-1 rounded">3-Pass</span>
           </div>
         </div>
+      </div>
 
-        {/* ── Score Banner (shown after result) ──────────────────────────── */}
-        {result && summary && (
-          <div className="rounded-2xl border border-border/40 bg-card/60 backdrop-blur-sm overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
-            <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-6 items-center">
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+        {/* ── Input card ── */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-5">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-xs flex items-center justify-center font-bold">1</span>
+            <span className="font-semibold text-gray-200">Paste Your LinkedIn Profile</span>
+          </div>
+          <p className="text-xs text-gray-500">
+            Copy everything from your LinkedIn profile — headline, about section, experience bullets, skills. The more you paste, the better the analysis.
+          </p>
 
-              <div className="flex flex-col items-center gap-2">
-                <ScoreDial score={summary.original_score} label="Before" />
-                <span className={`text-lg font-black ${gradeColor(summary.profile_grade_before)}`}>
-                  {summary.profile_grade_before}
-                </span>
-              </div>
+          <div className="relative">
+            <textarea
+              value={profileText}
+              onChange={(e) => setProfileText(e.target.value)}
+              placeholder={`Paste your LinkedIn profile here...
 
-              <div className="flex flex-col items-center justify-center col-span-0 sm:col-span-0">
-                <div className="flex items-center gap-1 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-400 font-black text-lg">+{summary.score_improvement}</span>
-                </div>
-                <span className="text-[11px] text-muted-foreground mt-1">improvement</span>
-              </div>
+Example:
+Headline: Software Engineer at Startup | Building AI Products
 
-              <div className="flex flex-col items-center gap-2">
-                <ScoreDial score={summary.optimized_score} label="After" />
-                <span className={`text-lg font-black ${gradeColor(summary.profile_grade_after)}`}>
-                  {summary.profile_grade_after}
-                </span>
-              </div>
+About:
+I am a software engineer with 3 years of experience...
 
-              <div className="sm:col-span-1 space-y-1.5">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Key Changes</p>
-                {summary.key_changes?.slice(0, 4).map((c, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-xs text-muted-foreground leading-relaxed">{c}</span>
-                  </div>
-                ))}
-              </div>
+Experience:
+Software Engineer @ XYZ Company (2022–Present)
+- Worked on backend services
+- Helped with database optimization
+- Responsible for API development
+
+Skills: Python, React, Node.js, SQL`}
+              rows={12}
+              className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 resize-none focus:outline-none focus:ring-2 transition-all ${
+                charCount > 15000
+                  ? "border-red-600 focus:ring-red-600"
+                  : charCount > 50
+                  ? "border-green-600 focus:ring-green-600"
+                  : "border-gray-700 focus:ring-blue-600"
+              }`}
+            />
+            <div className={`absolute bottom-3 right-3 text-xs ${charCount > 15000 ? "text-red-400" : "text-gray-500"}`}>
+              {charCount.toLocaleString()} / 15,000
             </div>
           </div>
-        )}
 
-        {/* ── INPUT FORM (hidden once result shown) ──────────────────────── */}
-        {!result && (
-          <div className="rounded-2xl border border-border/40 bg-card/60 backdrop-blur-sm p-6 space-y-6">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-bold text-foreground">Paste your LinkedIn sections</h2>
-              <span className="text-xs text-muted-foreground">— fill what you have, skip the rest</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-xs flex items-center justify-center font-bold">2</span>
+            <span className="font-semibold text-gray-200">Target Role</span>
+          </div>
+          <input
+            value={targetRole}
+            onChange={(e) => setTargetRole(e.target.value)}
+            placeholder="e.g. Senior Software Engineer at FAANG, Data Scientist, Product Manager"
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+          />
+
+          {error && (
+            <div className="bg-red-900/30 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3">
+              ⚠️ {error}
             </div>
+          )}
 
-            <TextArea
-              label="Headline"
-              icon={Zap}
-              badge="High Impact"
-              placeholder='e.g. "Full Stack Developer | React • Node.js • AWS | Building scalable products"'
-              value={form.headline}
-              onChange={update('headline')}
-              rows={2}
-            />
-            <TextArea
-              label="About / Summary"
-              icon={BookOpen}
-              badge="High Impact"
-              placeholder="Paste your current About section here..."
-              value={form.about}
-              onChange={update('about')}
-              rows={6}
-            />
-            <TextArea
-              label="Experience Bullets"
-              icon={BarChart3}
-              placeholder={`Paste all your job descriptions and bullets here.\n\nExample:\nSoftware Engineer @ Acme Corp (2022–Present)\n- Worked on backend APIs\n- Helped maintain React frontend\n\nIntern @ Startup (2021)\n- Assisted with data pipeline`}
-              value={form.experience}
-              onChange={update('experience')}
-              rows={8}
-            />
-            <TextArea
-              label="Skills Section"
-              icon={Tag}
-              placeholder="e.g. React, Node.js, Python, MongoDB, Docker, AWS, Git, REST APIs..."
-              value={form.skills_section}
-              onChange={update('skills_section')}
-              rows={2}
-            />
-
-            {error && (
-              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
+          <button
+            onClick={handleSubmit}
+            disabled={!charOk || !targetRole.trim() || loading}
+            className="w-full py-4 rounded-xl font-semibold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden"
+            style={{
+              background: loading
+                ? "linear-gradient(90deg,#1d4ed8,#2563eb)"
+                : "linear-gradient(90deg,#2563eb,#7c3aed)",
+            }}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-3">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="animate-pulse">Running 3-Pass AI Analysis…</span>
+              </span>
+            ) : (
+              "⚡ Optimize My LinkedIn Profile"
             )}
+          </button>
 
-            <button
-              onClick={handleOptimize}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl
-                bg-primary text-primary-foreground font-bold text-sm
-                hover:opacity-90 active:scale-[0.98] transition-all
-                disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Analysing &amp; Rewriting with GPT-4o...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Optimize My LinkedIn Profile
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
-        )}
+          {loading && (
+            <div className="space-y-1">
+              {[
+                { label: "Pass 1: Scoring all sections…", delay: "0s" },
+                { label: "Pass 2: Keyword gap analysis…", delay: "2s" },
+                { label: "Pass 3: AI rewriting your profile…", delay: "4s" },
+              ].map(({ label, delay }) => (
+                <div
+                  key={label}
+                  className="text-xs text-gray-400 flex items-center gap-2 animate-pulse"
+                  style={{ animationDelay: delay }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  {label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* ── RESULTS ────────────────────────────────────────────────────── */}
+        {/* ── Results ── */}
         {result && (
-          <div className="space-y-4">
-
-            {/* Tab Navigation */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {tabs.map(t => (
+          <div ref={resultsRef} className="space-y-6">
+            {/* Tab nav */}
+            <div className="flex gap-1 bg-gray-900 border border-gray-800 p-1 rounded-xl">
+              {tabs.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all
-                    ${activeTab === t.id
-                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                      : 'bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground'}`}
+                  className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                    activeTab === t.id
+                      ? "bg-blue-600 text-white shadow"
+                      : "text-gray-400 hover:text-white"
+                  }`}
                 >
-                  <t.icon className="w-3.5 h-3.5" />
                   {t.label}
                 </button>
               ))}
             </div>
 
-            {/* ── Headline Tab ───────────────────────────────────────────── */}
-            {activeTab === 'headline' && result.headline && (
-              <div className="space-y-4">
-                <DiffCard
-                  label="Headline"
-                  original={result.headline.original}
-                  optimized={result.headline.optimized}
-                />
-                <div className="flex items-start gap-3 px-5 py-4 rounded-2xl border border-blue-500/20 bg-blue-500/5">
-                  <Eye className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-blue-400 mb-1">Why this works</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{result.headline.why}</p>
-                    {result.headline.char_count > 0 && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Character count: <span className="text-foreground font-bold">{result.headline.char_count}</span>
-                        <span className="text-muted-foreground">/220</span>
-                      </p>
-                    )}
+            {/* ── TAB: Scores ── */}
+            {activeTab === "scores" && result.scores && (
+              <div className="space-y-5">
+                {/* Overall score hero */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex items-center gap-6">
+                  <ScoreRing score={result.scores.overall_score} label="Overall" size={100} />
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-white mb-1">
+                      {result.scores.overall_score >= 80
+                        ? "🟢 Strong Profile"
+                        : result.scores.overall_score >= 60
+                        ? "🟡 Needs Work"
+                        : "🔴 Weak Profile"}
+                    </h2>
+                    <p className="text-sm text-gray-400">
+                      {result.scores.overall_score >= 80
+                        ? "Your profile is well-optimized. Focus on the gaps below."
+                        : result.scores.overall_score >= 60
+                        ? "Good foundation. Apply the rewrites to jump 20+ points."
+                        : "Significant room for improvement. Apply all rewrites."}
+                    </p>
                   </div>
                 </div>
 
-                {/* SEO Keywords */}
-                {result.seo_keywords?.length > 0 && (
-                  <div className="rounded-2xl border border-border/40 bg-card/40 p-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">SEO Keywords to Include</p>
+                {/* Section scores grid */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                  <h3 className="text-sm font-semibold text-gray-300 mb-5 uppercase tracking-widest">
+                    Section Breakdown
+                  </h3>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
+                    {[
+                      { key: "headline_score", label: "Headline" },
+                      { key: "about_score", label: "About" },
+                      { key: "experience_score", label: "Experience" },
+                      { key: "skills_score", label: "Skills" },
+                      { key: "recruiter_searchability", label: "Searchability" },
+                    ].map(({ key, label }) => (
+                      <ScoreRing key={key} score={result.scores[key] ?? 0} label={label} size={76} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3-column cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    {
+                      title: "✅ Strengths",
+                      items: result.scores.strengths,
+                      color: "green",
+                      bg: "bg-green-900/20 border-green-800",
+                    },
+                    {
+                      title: "🚨 Critical Gaps",
+                      items: result.scores.critical_gaps,
+                      color: "red",
+                      bg: "bg-red-900/20 border-red-800",
+                    },
+                    {
+                      title: "⚡ Quick Wins",
+                      items: result.scores.quick_wins,
+                      color: "yellow",
+                      bg: "bg-yellow-900/20 border-yellow-800",
+                    },
+                  ].map(({ title, items, bg }) => (
+                    <div key={title} className={`border rounded-xl p-4 ${bg}`}>
+                      <p className="text-xs font-bold text-gray-200 uppercase tracking-widest mb-3">
+                        {title}
+                      </p>
+                      <ul className="space-y-2">
+                        {(items || []).map((item, i) => (
+                          <li key={i} className="text-xs text-gray-300 flex items-start gap-2">
+                            <span className="mt-0.5 shrink-0">•</span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB: Keywords ── */}
+            {activeTab === "keywords" && result.keywords && (
+              <div className="space-y-4">
+                {/* Keyword density score */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex items-center gap-6">
+                  <ScoreRing score={result.keywords.keyword_density_score ?? 0} label="Keyword Score" size={90} />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-200 mb-1">
+                      Target: <span className="text-blue-400">{result.keywords.target_role}</span>
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {result.keywords.present_keywords?.length ?? 0} keywords found ·{" "}
+                      {result.keywords.missing_keywords?.length ?? 0} missing
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Missing keywords */}
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                    <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-3">
+                      🚨 Missing Keywords
+                    </p>
                     <div className="flex flex-wrap gap-2">
-                      {result.seo_keywords.map((k, i) => (
-                        <span
-                          key={i}
-                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border
-                            ${k.currently_in_profile
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                              : 'bg-secondary/40 border-border/40 text-muted-foreground'}`}
-                        >
-                          {k.currently_in_profile ? <Check className="w-2.5 h-2.5" /> : <ArrowRight className="w-2.5 h-2.5" />}
-                          {k.keyword}
-                          {k.search_volume === 'high' && <Flame className="w-2.5 h-2.5 text-orange-400" />}
-                        </span>
+                      {(result.keywords.missing_keywords || []).map((kw) => (
+                        <Tag key={kw} color="red">{kw}</Tag>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-3">
-                      <span className="text-emerald-400">●</span> Already in profile &nbsp;
-                      <span className="text-muted-foreground">●</span> Add this keyword
+                  </div>
+
+                  {/* Present keywords */}
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                    <p className="text-xs font-bold text-green-400 uppercase tracking-widest mb-3">
+                      ✅ Present Keywords
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(result.keywords.present_keywords || []).map((kw) => (
+                        <Tag key={kw} color="green">{kw}</Tag>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Top recruiter searches */}
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                    <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">
+                      🔍 Top Recruiter Searches
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(result.keywords.top_recruiter_searches || []).map((s) => (
+                        <Tag key={s} color="blue">{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recommended skills */}
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                    <p className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">
+                      ➕ Add These Skills
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(result.keywords.recommended_skills_to_add || []).map((s) => (
+                        <Tag key={s} color="purple">{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB: Rewrites ── */}
+            {activeTab === "rewrites" && result.rewrites && (
+              <div className="space-y-4">
+                {/* Headline */}
+                {result.rewrites.headline && (
+                  <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-gray-200 uppercase tracking-widest">
+                        💼 Headline
+                      </h3>
+                      <CopyBtn text={result.rewrites.headline.optimized} />
+                    </div>
+                    <DiffView
+                      original={result.rewrites.headline.original}
+                      optimized={result.rewrites.headline.optimized}
+                      label="Headline"
+                    />
+                    {result.rewrites.headline.explanation && (
+                      <p className="text-xs text-gray-500 italic">
+                        💡 {result.rewrites.headline.explanation}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* About */}
+                {result.rewrites.about && (
+                  <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-gray-200 uppercase tracking-widest">
+                        📝 About / Summary
+                      </h3>
+                      <CopyBtn text={result.rewrites.about.optimized} />
+                    </div>
+                    <DiffView
+                      original={result.rewrites.about.original}
+                      optimized={result.rewrites.about.optimized}
+                      label="About"
+                    />
+                    {result.rewrites.about.explanation && (
+                      <p className="text-xs text-gray-500 italic">
+                        💡 {result.rewrites.about.explanation}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Experience bullets */}
+                {result.rewrites.experience_bullets?.length > 0 && (
+                  <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+                    <h3 className="text-sm font-bold text-gray-200 uppercase tracking-widest">
+                      🚀 Experience Bullets
+                    </h3>
+                    <div className="space-y-3">
+                      {result.rewrites.experience_bullets.map((b, i) => (
+                        <div key={i} className="border border-gray-700 rounded-xl p-4 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-gray-500">Bullet {i + 1}</span>
+                            <CopyBtn text={b.optimized} />
+                          </div>
+                          <div className="text-xs text-red-400 line-through opacity-70">{b.original}</div>
+                          <div className="text-sm text-green-300">{b.optimized}</div>
+                          {b.improvement && (
+                            <p className="text-xs text-gray-500 italic">💡 {b.improvement}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skills + banner + connection message */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {result.rewrites.skills_to_highlight?.length > 0 && (
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                      <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">
+                        🏆 Top Skills to Highlight
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.rewrites.skills_to_highlight.map((s) => (
+                          <Tag key={s} color="blue">{s}</Tag>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {result.rewrites.banner_suggestion && (
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                      <p className="text-xs font-bold text-yellow-400 uppercase tracking-widest mb-2">
+                        🖼 Banner Suggestion
+                      </p>
+                      <p className="text-xs text-gray-300">{result.rewrites.banner_suggestion}</p>
+                    </div>
+                  )}
+                </div>
+
+                {result.rewrites.connection_message_template && (
+                  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-purple-400 uppercase tracking-widest">
+                        🤝 Connection Request Template
+                      </p>
+                      <CopyBtn text={result.rewrites.connection_message_template} />
+                    </div>
+                    <p className="text-sm text-gray-300 leading-relaxed">
+                      {result.rewrites.connection_message_template}
                     </p>
                   </div>
                 )}
               </div>
             )}
-
-            {/* ── About Tab ──────────────────────────────────────────────── */}
-            {activeTab === 'about' && result.about && (
-              <div className="space-y-4">
-                <DiffCard
-                  label="About / Summary"
-                  original={result.about.original_preview ? result.about.original_preview + '...' : ''}
-                  optimized={result.about.optimized}
-                />
-                <div className="flex items-start gap-3 px-5 py-4 rounded-2xl border border-blue-500/20 bg-blue-500/5">
-                  <Eye className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-blue-400 mb-1">Why this works</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{result.about.why}</p>
-                  </div>
-                </div>
-                {result.about.keywords_added?.length > 0 && (
-                  <div className="rounded-2xl border border-border/40 bg-card/40 p-5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Keywords Added</p>
-                    <div className="flex flex-wrap gap-2">
-                      {result.about.keywords_added.map((kw, i) => (
-                        <span key={i} className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 border border-primary/20 text-primary">
-                          + {kw}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Experience Tab ─────────────────────────────────────────── */}
-            {activeTab === 'experience' && result.experience?.length > 0 && (
-              <div className="space-y-3">
-                {result.experience.map((item, i) => (
-                  <div key={i} className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
-                    {item.job_context && (
-                      <div className="px-5 py-2.5 border-b border-border/30 bg-card/60 flex items-center gap-2">
-                        <Target className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-muted-foreground">{item.job_context}</span>
-                        <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full border font-bold ${impactBadge('high')}`}>
-                          {item.improvement_type?.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                    )}
-                    <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] font-bold text-red-400/70 uppercase tracking-wider">Before</p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{item.original}</p>
-                        {item.verb_upgrade?.from && (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
-                            Weak: "{item.verb_upgrade.from}"
-                          </span>
-                        )}
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider">After</p>
-                          <CopyButton text={item.optimized} />
-                        </div>
-                        <p className="text-sm text-foreground leading-relaxed">{item.optimized}</p>
-                        {item.verb_upgrade?.to && (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                            Strong: "{item.verb_upgrade.to}"
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ── Skills Tab ─────────────────────────────────────────────── */}
-            {activeTab === 'skills' && result.skills_to_add?.length > 0 && (
-              <div className="rounded-2xl border border-border/40 bg-card/40 p-5 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recommended Skills to Add</p>
-                {result.skills_to_add.map((s, i) => (
-                  <div key={i} className="flex items-start gap-4 p-4 rounded-xl border border-border/30 bg-secondary/20">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-semibold text-sm text-foreground">{s.skill}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${impactBadge(s.priority === 'high' ? 'high' : 'medium')}`}>
-                          {s.priority}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary/50 border border-border/30 text-muted-foreground">
-                          {s.category}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{s.reason}</p>
-                    </div>
-                    {s.priority === 'high' && <Star className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ── Tips Tab ───────────────────────────────────────────────── */}
-            {activeTab === 'tips' && result.recruiter_tips?.length > 0 && (
-              <div className="space-y-3">
-                {result.recruiter_tips.map((t, i) => (
-                  <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-border/40 bg-card/40">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
-                      ${t.impact === 'high' ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-blue-500/10 border border-blue-500/20'}`}>
-                      <Lightbulb className={`w-4 h-4 ${t.impact === 'high' ? 'text-emerald-400' : 'text-blue-400'}`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t.section}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${impactBadge(t.impact)}`}>
-                          {t.impact} impact
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary/40 border border-border/30 text-muted-foreground">
-                          {t.effort} effort
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground leading-relaxed">{t.tip}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
           </div>
         )}
-
-        {/* ── Empty state (experience/skills tab with no data) ───────────── */}
-        {result && activeTab === 'experience' && (!result.experience || result.experience.length === 0) && (
-          <div className="rounded-2xl border border-border/40 bg-card/40 p-10 text-center">
-            <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No experience bullets were provided to optimize.</p>
-            <p className="text-xs text-muted-foreground mt-1">Re-run the optimizer with your experience section pasted in.</p>
-          </div>
-        )}
-
       </div>
     </div>
   );
