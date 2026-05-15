@@ -1,140 +1,393 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import {
   User, Mail, Phone, MapPin, FileText,
   Briefcase, GraduationCap, Star,
   Calendar, AlertCircle, Clock,
   Loader2, Sparkles, ChevronRight,
   Send, MessageCircle, ExternalLink,
-  TrendingUp, Award, CheckCircle2,
-  Code, Layers, Database, Globe,
-  BookOpen, Activity, ArrowRight
+  CheckCircle2, Code, ArrowRight,
+  Activity, Filter, Video, XCircle, Zap,
+  TrendingUp, Award, Globe, ChevronUp
 } from 'lucide-react';
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import { resumeApi, mentorApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
-// ── Animated Background ───────────────────────────────
-function PageBackground() {
+// ── CSS injected once ─────────────────────────────────
+const GLOBAL_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+  .profile-root {
+    font-family: 'DM Sans', sans-serif;
+    --accent: #6ee7b7;
+    --accent2: #38bdf8;
+    --accent3: #a78bfa;
+    --gold: #fbbf24;
+    --surface: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.13);
+    --text-primary: rgba(255,255,255,0.95);
+    --text-secondary: rgba(255,255,255,0.45);
+    --text-muted: rgba(255,255,255,0.25);
+  }
+
+  .profile-root * { box-sizing: border-box; }
+
+  .font-display { font-family: 'Syne', sans-serif; }
+
+  .glass-card {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+  }
+
+  .glass-card-bright {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(32px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+  }
+
+  .noise-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .skill-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: default;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.7);
+  }
+  .skill-chip:hover {
+    background: rgba(110,231,183,0.1);
+    border-color: rgba(110,231,183,0.3);
+    color: #6ee7b7;
+    transform: translateY(-1px);
+  }
+
+  .tab-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s;
+    border: 1px solid transparent;
+    color: rgba(255,255,255,0.4);
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+  }
+  .tab-pill:hover { color: rgba(255,255,255,0.75); }
+  .tab-pill.active {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.95);
+  }
+
+  .score-glow { filter: drop-shadow(0 0 20px rgba(110,231,183,0.4)); }
+
+  .timeline-line {
+    position: absolute;
+    left: 19px;
+    top: 44px;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, rgba(110,231,183,0.2), transparent);
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    background: linear-gradient(135deg, #6ee7b7, #38bdf8);
+    color: #0a0a12;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(110,231,183,0.25); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.9); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid;
+  }
+
+  .scrollbar-hide { scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+  @keyframes pulse-ring {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+  .pulse-ring { animation: pulse-ring 3s ease-in-out infinite; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+  .float { animation: float 6s ease-in-out infinite; }
+
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
+    background-size: 200% auto;
+    animation: shimmer 3s linear infinite;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25);
+    font-family: 'Syne', sans-serif;
+  }
+`;
+
+function StyleInjector() {
+  useEffect(() => {
+    const id = 'profile-styles';
+    if (!document.getElementById(id)) {
+      const el = document.createElement('style');
+      el.id = id;
+      el.textContent = GLOBAL_STYLES;
+      document.head.appendChild(el);
+    }
+  }, []);
+  return null;
+}
+
+// ── Subtle ambient glow (relative, doesn't break layout) ─────────────────────
+function AmbientGlow() {
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      <motion.div className="absolute rounded-full blur-3xl"
-        style={{ width: 600, height: 600, background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)', top: -150, right: -100 }}
-        animate={{ scale: [1, 1.1, 1], rotate: [0, 20, 0] }}
-        transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div className="absolute rounded-full blur-3xl"
-        style={{ width: 500, height: 500, background: 'radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%)', bottom: -100, left: -100 }}
-        animate={{ scale: [1, 1.15, 1] }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut', delay: 5 }}
-      />
-      <div className="absolute inset-0 opacity-[0.02]"
-        style={{ backgroundImage: `linear-gradient(rgba(99,102,241,1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,1) 1px, transparent 1px)`, backgroundSize: '60px 60px' }}
-      />
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0, borderRadius: 24 }}>
+      <div style={{ position: 'absolute', width: 500, height: 500, borderRadius: '50%', top: -150, right: -100, background: 'radial-gradient(circle, rgba(110,231,183,0.07) 0%, transparent 65%)' }} />
+      <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', bottom: -80, left: -80, background: 'radial-gradient(circle, rgba(56,189,248,0.05) 0%, transparent 65%)' }} />
     </div>
   );
 }
 
-// ── Score Ring ────────────────────────────────────────
-function ScoreRing({ score, size = 96 }) {
-  const radius = (size / 2) - 8;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? '#34d399' : score >= 60 ? '#60a5fa' : '#f59e0b';
-  const glow = score >= 80 ? 'rgba(52,211,153,0.3)' : score >= 60 ? 'rgba(96,165,250,0.3)' : 'rgba(245,158,11,0.3)';
+// ── Score Arc ─────────────────────────────────────────
+function ScoreArc({ score }) {
+  const radius = 54;
+  const circ = 2 * Math.PI * radius;
+  const arc = circ * 0.75;
+  const offset = arc - (score / 100) * arc;
+  const color = score >= 80 ? '#6ee7b7' : score >= 60 ? '#38bdf8' : '#fbbf24';
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg className="absolute inset-0 -rotate-90" width={size} height={size}>
-        <circle cx={size/2} cy={size/2} r={radius} stroke="rgba(255,255,255,0.1)" strokeWidth="7" fill="none" />
+    <div style={{ position: 'relative', width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width={140} height={140} style={{ position: 'absolute', inset: 0, transform: 'rotate(135deg)' }}>
+        <circle cx={70} cy={70} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" strokeDasharray={`${arc} ${circ}`} strokeLinecap="round" />
         <motion.circle
-          cx={size/2} cy={size/2} r={radius}
-          stroke={color}
-          strokeWidth="7"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
+          cx={70} cy={70} r={radius} fill="none"
+          stroke={color} strokeWidth="8"
+          strokeDasharray={`${arc} ${circ}`}
+          initial={{ strokeDashoffset: arc }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.5, ease: 'easeOut', delay: 0.5 }}
-          style={{ filter: `drop-shadow(0 0 8px ${glow})` }}
+          transition={{ duration: 2, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
+          strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 14px ${color}88)` }}
         />
       </svg>
-      <div className="text-center z-10">
-        <motion.p
-          className="font-black leading-none"
-          style={{ color, fontSize: size * 0.26 }}
+      <div style={{ textAlign: 'center', zIndex: 1 }}>
+        <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.8, type: 'spring', bounce: 0.4 }}
+          transition={{ delay: 1, type: 'spring', bounce: 0.5 }}
+          style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 36, color, lineHeight: 1 }}
         >
           {score}
-        </motion.p>
-        <p className="text-[10px] text-white/50 mt-0.5">/ 100</p>
+        </motion.div>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 4, letterSpacing: '0.1em', fontFamily: 'Syne, sans-serif' }}>AI SCORE</div>
       </div>
     </div>
   );
 }
 
-// ── Skill Tag ─────────────────────────────────────────
-function SkillTag({ skill, index }) {
+// ── Avatar ────────────────────────────────────────────
+function Avatar({ name, size = 80 }) {
+  const letter = name?.[0]?.toUpperCase() || 'S';
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <div className="pulse-ring" style={{
+        position: 'absolute', inset: -3, borderRadius: 20,
+        background: 'linear-gradient(135deg, rgba(110,231,183,0.4), rgba(56,189,248,0.4))',
+      }} />
+      <div style={{
+        position: 'relative', width: size, height: size, borderRadius: 18,
+        background: 'linear-gradient(135deg, #1a2a40, #0f1a2e)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: size * 0.4,
+        color: '#6ee7b7', border: '1px solid rgba(110,231,183,0.2)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)'
+      }}>
+        {letter}
+      </div>
+      {/* Online dot */}
+      <div style={{
+        position: 'absolute', bottom: 2, right: 2, width: 12, height: 12,
+        borderRadius: '50%', background: '#6ee7b7',
+        border: '2px solid #080810', boxShadow: '0 0 8px #6ee7b7'
+      }} />
+    </div>
+  );
+}
+
+// ── Stat Pill ─────────────────────────────────────────
+function StatPill({ icon: Icon, label, value, color, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.5 }}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        padding: '16px 20px', borderRadius: 16, flex: 1, minWidth: 80,
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(12px)', textAlign: 'center'
+      }}
+    >
+      <Icon size={14} style={{ color }} />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: delay + 0.2 }}
+        style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 26, color, lineHeight: 1 }}
+      >
+        {value}
+      </motion.div>
+      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', fontFamily: 'Syne, sans-serif', textTransform: 'uppercase' }}>{label}</div>
+    </motion.div>
+  );
+}
+
+// ── Skill Chip ────────────────────────────────────────
+function SkillChip({ skill, index }) {
   const colors = [
-    'bg-blue-500/10 border-blue-500/20 text-blue-300',
-    'bg-violet-500/10 border-violet-500/20 text-violet-300',
-    'bg-emerald-500/10 border-emerald-500/20 text-emerald-300',
-    'bg-orange-500/10 border-orange-500/20 text-orange-300',
-    'bg-pink-500/10 border-pink-500/20 text-pink-300',
-    'bg-teal-500/10 border-teal-500/20 text-teal-300',
+    { bg: 'rgba(110,231,183,0.08)', border: 'rgba(110,231,183,0.2)', text: '#6ee7b7' },
+    { bg: 'rgba(56,189,248,0.08)', border: 'rgba(56,189,248,0.2)', text: '#38bdf8' },
+    { bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.2)', text: '#a78bfa' },
+    { bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)', text: '#fbbf24' },
+    { bg: 'rgba(251,113,133,0.08)', border: 'rgba(251,113,133,0.2)', text: '#fb7185' },
   ];
   const c = colors[index % colors.length];
   return (
     <motion.span
-      initial={{ opacity: 0, scale: 0.8 }}
+      initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.03 * index, type: 'spring', bounce: 0.3 }}
-      whileHover={{ scale: 1.06, y: -1 }}
-      className={`px-3 py-1.5 rounded-lg border text-xs font-medium cursor-default transition-all ${c}`}
+      transition={{ delay: index * 0.025, type: 'spring', bounce: 0.3 }}
+      whileHover={{ scale: 1.06, y: -2 }}
+      style={{
+        display: 'inline-flex', alignItems: 'center',
+        padding: '5px 13px', borderRadius: 100,
+        fontSize: 12, fontWeight: 500,
+        background: c.bg, border: `1px solid ${c.border}`, color: c.text,
+        cursor: 'default', transition: 'all 0.18s', whiteSpace: 'nowrap'
+      }}
     >
       {skill}
     </motion.span>
   );
 }
 
-// ── Timeline Item ─────────────────────────────────────
-function TimelineItem({ icon: Icon, title, subtitle, meta, description, color, isLast, index }) {
+// ── Timeline Entry ────────────────────────────────────
+function TimelineEntry({ icon: Icon, title, subtitle, meta, description, index, isLast, accentColor }) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.1 + index * 0.1 }}
-      className="relative flex gap-5"
+      transition={{ delay: 0.08 + index * 0.1 }}
+      style={{ display: 'flex', gap: 16, position: 'relative', paddingBottom: isLast ? 0 : 28 }}
     >
-      {/* Line */}
-      {!isLast && (
-        <div className="absolute left-5 top-10 bottom-0 w-px" style={{ background: 'linear-gradient(to bottom, rgba(99,102,241,0.3), transparent)' }} />
-      )}
-      {/* Icon */}
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg z-10 ${color}`}>
-        <Icon className="w-4 h-4 text-white" />
+      {!isLast && <div className="timeline-line" />}
+      {/* Icon node */}
+      <div style={{
+        width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+        background: `${accentColor}15`, border: `1px solid ${accentColor}30`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: `0 4px 16px ${accentColor}20`
+      }}>
+        <Icon size={15} style={{ color: accentColor }} />
       </div>
-      {/* Content */}
-      <div className="flex-1 pb-6">
-        <div className="flex items-start justify-between gap-3">
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <p className="font-bold text-foreground text-sm">{title}</p>
-            <p className="text-xs font-semibold mt-0.5" style={{ color: '#818cf8' }}>{subtitle}</p>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.3 }}>{title}</div>
+            <div style={{ fontSize: 12, color: accentColor, fontWeight: 500, marginTop: 2 }}>{subtitle}</div>
           </div>
           {meta && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0 mt-0.5 px-2.5 py-1 rounded-full bg-secondary/40 border border-border/30">
-              <Clock className="w-3 h-3" />
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+              fontSize: 11, color: 'rgba(255,255,255,0.3)',
+              padding: '4px 10px', borderRadius: 100,
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)'
+            }}>
+              <Clock size={10} />
               {meta}
             </span>
           )}
         </div>
         {description && (
-          <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-2">{description}</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 6, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {description}
+          </p>
         )}
       </div>
     </motion.div>
@@ -142,110 +395,144 @@ function TimelineItem({ icon: Icon, title, subtitle, meta, description, color, i
 }
 
 // ── Session Card ──────────────────────────────────────
-function SessionCard({ session, index }) {
-  const statusMap = {
-    pending: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', dot: 'bg-yellow-400', label: 'Pending' },
-    accepted: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-400', label: 'Confirmed' },
-    declined: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', dot: 'bg-red-400', label: 'Declined' },
+function SessionCard({ session, onCancel, cancelling, index }) {
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const canCancel = session.status === 'pending' || session.status === 'accepted';
+
+  const statusCfg = {
+    pending: { label: 'Pending', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)' },
+    accepted: { label: 'Confirmed', color: '#6ee7b7', bg: 'rgba(110,231,183,0.08)', border: 'rgba(110,231,183,0.2)' },
+    declined: { label: 'Declined', color: '#fb7185', bg: 'rgba(251,113,133,0.08)', border: 'rgba(251,113,133,0.2)' },
+    cancelled: { label: 'Cancelled', color: 'rgba(255,255,255,0.3)', bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.06)' },
   };
-  const s = statusMap[session.status] || statusMap.pending;
+  const s = statusCfg[session.status] || statusCfg.pending;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.08 * index }}
-      className="group relative p-4 rounded-2xl border border-border/40 bg-card/40 hover:bg-card/70 hover:border-border/70 backdrop-blur-sm transition-all overflow-hidden"
+      transition={{ delay: 0.06 * index }}
+      style={{
+        padding: '16px 20px', borderRadius: 16,
+        background: session.status === 'accepted' ? 'rgba(110,231,183,0.04)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${session.status === 'accepted' ? 'rgba(110,231,183,0.12)' : 'rgba(255,255,255,0.07)'}`,
+        opacity: (session.status === 'cancelled' || session.status === 'declined') ? 0.5 : 1,
+        transition: 'all 0.2s'
+      }}
     >
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-      <div className="flex items-start gap-4">
-        {/* Mentor avatar */}
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-md shadow-blue-500/20">
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        {/* Avatar */}
+        <div style={{
+          width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+          background: 'linear-gradient(135deg, #1e3a5f, #0f2133)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 16, color: '#38bdf8',
+          border: '1px solid rgba(56,189,248,0.2)'
+        }}>
           {session.mentor_name?.[0]?.toUpperCase() || 'M'}
         </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <p className="font-bold text-foreground text-sm truncate">{session.mentor_name}</p>
-            <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-semibold flex-shrink-0 ${s.color} ${s.bg} ${s.border}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {session.mentor_name}
+            </div>
+            <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, color: s.color, background: s.bg, border: `1px solid ${s.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: s.color, display: 'inline-block' }} />
               {s.label}
             </span>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="w-3 h-3" />
-              {session.day}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              {session.time_slot}
-            </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: session.topic ? 8 : 0 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgba(255,255,255,0.35)' }}><Calendar size={10} />{session.day}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgba(255,255,255,0.35)' }}><Clock size={10} />{session.time_slot}</span>
           </div>
           {session.topic && (
-            <div className="flex items-start gap-1.5 mt-2 p-2 rounded-lg bg-secondary/30 border border-border/20">
-              <MessageCircle className="w-3 h-3 text-muted-foreground flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground italic line-clamp-1">"{session.topic}"</p>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '7px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', marginBottom: 8 }}>
+              <MessageCircle size={10} style={{ color: 'rgba(255,255,255,0.25)', marginTop: 1, flexShrink: 0 }} />
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{session.topic}"</p>
             </div>
           )}
-          {session.meeting_link && session.status === 'accepted' && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              onClick={() => window.open(session.meeting_link, '_blank', 'noopener,noreferrer')}
-              className="flex items-center gap-1.5 mt-2 text-xs text-primary font-semibold hover:opacity-80 transition-opacity"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Join Meeting
-            </motion.button>
+          {session.status === 'accepted' && session.meeting_link && (
+            <a href={session.meeting_link} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+              background: 'rgba(110,231,183,0.1)', border: '1px solid rgba(110,231,183,0.25)',
+              color: '#6ee7b7', textDecoration: 'none', transition: 'all 0.15s'
+            }}>
+              <Video size={11} /> Join Meeting <ExternalLink size={9} />
+            </a>
           )}
+          {session.status === 'accepted' && !session.meeting_link && (
+            <span style={{ fontSize: 11, color: 'rgba(110,231,183,0.5)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <CheckCircle2 size={10} /> Confirmed — link coming soon
+            </span>
+          )}
+          {canCancel && !confirmCancel && (
+            <button onClick={() => setConfirmCancel(true)} style={{ marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: 'DM Sans, sans-serif', padding: 0, transition: 'color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#fb7185'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
+            >
+              <XCircle size={11} /> Cancel session
+            </button>
+          )}
+          <AnimatePresence>
+            {confirmCancel && (
+              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <span style={{ fontSize: 11, color: '#fb7185', fontWeight: 500 }}>Cancel this?</span>
+                <button onClick={() => { onCancel(session.session_id); setConfirmCancel(false); }} disabled={cancelling}
+                  style={{ padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(251,113,133,0.1)', border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                  {cancelling ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> : 'Yes'}
+                </button>
+                <button onClick={() => setConfirmCancel(false)}
+                  style={{ padding: '4px 12px', borderRadius: 100, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                  Keep
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ── Tab Button ────────────────────────────────────────
-function TabBtn({ label, icon: Icon, active, onClick, badge }) {
+// ── Section Header ────────────────────────────────────
+function SectionHeader({ icon: Icon, label, count, accent, action, onAction }) {
   return (
-    <button
-      onClick={onClick}
-      className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-        active
-          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
-          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
-      }`}
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-      {badge > 0 && (
-        <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${active ? 'bg-white/20 text-white' : 'bg-primary/20 text-primary'}`}>
-          {badge}
-        </span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: `${accent}15`, border: `1px solid ${accent}25`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={14} style={{ color: accent }} />
+        </div>
+        <div>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15, color: 'rgba(255,255,255,0.9)' }}>{label}</div>
+          {count !== undefined && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{count} {label.toLowerCase()}</div>}
+        </div>
+      </div>
+      {action && (
+        <button onClick={onAction} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: accent, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 500, opacity: 0.8, transition: 'opacity 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '0.8'}
+        >
+          {action} <ChevronRight size={13} />
+        </button>
       )}
-    </button>
+    </div>
   );
 }
 
-// ── Stat Card ─────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, color, bg, delay }) {
+// ── Empty State ───────────────────────────────────────
+function EmptyState({ icon: Icon, title, desc, btnLabel, onBtn, color }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-2xl border ${bg} backdrop-blur-sm text-center`}
-    >
-      <Icon className={`w-4 h-4 ${color}`} />
-      <motion.p
-        className={`text-2xl font-black ${color}`}
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: delay + 0.15, type: 'spring', bounce: 0.4 }}
-      >
-        {value}
-      </motion.p>
-      <p className="text-[11px] text-muted-foreground font-medium">{label}</p>
-    </motion.div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', textAlign: 'center' }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: `${color}10`, border: `1px solid ${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+        <Icon size={22} style={{ color: `${color}60` }} />
+      </div>
+      <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15, color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>{title}</div>
+      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', maxWidth: 260, lineHeight: 1.6, marginBottom: 20 }}>{desc}</p>
+      {btnLabel && (
+        <button className="btn-primary" onClick={onBtn}>{btnLabel} <ArrowRight size={13} /></button>
+      )}
+    </div>
   );
 }
 
@@ -258,6 +545,8 @@ export default function StudentProfilePage() {
   const [loading, setLoading] = useState(true);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [cancelling, setCancelling] = useState(false);
+  const [sessionFilter, setSessionFilter] = useState('all');
 
   const userId = getUserId();
   const name = getName();
@@ -282,232 +571,203 @@ export default function StudentProfilePage() {
     finally { setSessionsLoading(false); }
   }
 
+  async function handleCancel(sessionId) {
+    setCancelling(true);
+    try {
+      await mentorApi.cancelSession(sessionId, userId);
+      setSessions(prev => prev.map(s => s.session_id === sessionId ? { ...s, status: 'cancelled' } : s));
+    } catch {}
+    finally { setCancelling(false); }
+  }
+
   const skills = profile?.skills || [];
   const experience = profile?.experience || profile?.work_experience || [];
   const education = profile?.education || [];
   const score = profile?.ai_profile_score || 0;
-  const pendingSessions = sessions.filter(s => s.status === 'pending');
-  const acceptedSessions = sessions.filter(s => s.status === 'accepted');
-  const declinedSessions = sessions.filter(s => s.status === 'declined');
 
-  // Group skills into chunks of ~10 for visual variety
-  const skillGroups = skills.reduce((acc, skill, i) => {
-    const g = Math.floor(i / 10);
-    if (!acc[g]) acc[g] = [];
-    acc[g].push(skill);
-    return acc;
-  }, []);
+  const filteredSessions = sessionFilter === 'all' ? sessions : sessions.filter(s => s.status === sessionFilter);
+  const pendingCount = sessions.filter(s => s.status === 'pending').length;
+  const confirmedCount = sessions.filter(s => s.status === 'accepted').length;
 
-  const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-blue-400' : 'text-yellow-400';
+  const scoreColor = score >= 80 ? '#6ee7b7' : score >= 60 ? '#38bdf8' : '#fbbf24';
   const scoreLabel = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Needs Work';
 
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: Activity },
+    { id: 'skills', label: 'Skills', icon: Code, badge: skills.length },
+    { id: 'experience', label: 'Experience', icon: Briefcase, badge: experience.length + education.length },
+    { id: 'sessions', label: 'Sessions', icon: Calendar, badge: sessions.length },
+  ];
+
   return (
-    <>
-      <PageBackground />
+    <div className="profile-root" style={{ position: 'relative', padding: '8px 0 48px', maxWidth: 860, margin: '0 auto' }}>
+      <StyleInjector />
 
-      <div className="relative max-w-5xl mx-auto space-y-0 pb-8">
+      <div style={{ position: 'relative', zIndex: 1 }}>
 
-        {/* ── Hero Banner ── */}
+        {/* ── HERO ─────────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-3xl overflow-hidden mb-6"
-          style={{
-            background: 'linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(99,102,241,0.1) 50%, rgba(139,92,246,0.08) 100%)',
-            border: '1px solid rgba(99,102,241,0.2)',
-            boxShadow: '0 0 60px rgba(59,130,246,0.08)',
+          transition={{ duration: 0.6 }}
+          style={{ marginBottom: 20, borderRadius: 24, overflow: 'hidden', position: 'relative',
+            background: 'linear-gradient(135deg, rgba(14,22,40,0.9) 0%, rgba(10,12,24,0.95) 100%)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 0 0 1px rgba(110,231,183,0.05), 0 40px 80px rgba(0,0,0,0.5)'
           }}
         >
-          {/* Top accent */}
-          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.6), rgba(139,92,246,0.6), transparent)' }} />
-          {/* Decorative circles */}
-          <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.1), transparent 70%)' }} />
-          <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.08), transparent 70%)' }} />
+          {/* Top shimmer line */}
+          <div style={{ height: 1, background: 'linear-gradient(90deg, transparent 0%, rgba(110,231,183,0.5) 40%, rgba(56,189,248,0.4) 70%, transparent 100%)' }} />
 
-          <div className="relative p-8">
-            <div className="flex items-start justify-between gap-6 flex-wrap">
+          {/* Noise overlay */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E\")", pointerEvents: 'none', zIndex: 0, borderRadius: 'inherit' }} />
 
-              {/* Left — Avatar + Info */}
-              <div className="flex items-center gap-6">
-                {/* Avatar with animated ring */}
-                <div className="relative flex-shrink-0">
-                  <motion.div
-                    className="absolute -inset-1.5 rounded-2xl opacity-60"
-                    style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.5), rgba(139,92,246,0.5))' }}
-                    animate={{ opacity: [0.4, 0.8, 0.4] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                  <div
-                    className="relative w-20 h-20 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-2xl"
-                    style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', margin: '2px' }}
-                  >
-                    {name?.[0]?.toUpperCase() || 'S'}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-card shadow-lg" />
-                </div>
+          {/* Glow orbs */}
+          <div style={{ position: 'absolute', width: 300, height: 300, top: -80, right: -60, borderRadius: '50%', background: 'radial-gradient(circle, rgba(110,231,183,0.07), transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', width: 200, height: 200, bottom: -40, left: -40, borderRadius: '50%', background: 'radial-gradient(circle, rgba(56,189,248,0.05), transparent 70%)', pointerEvents: 'none' }} />
 
-                {/* Name + details */}
+          <div style={{ position: 'relative', zIndex: 1, padding: '32px 32px 28px' }}>
+            {/* Top row */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 28 }}>
+              {/* Left: avatar + info */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+                {loading
+                  ? <div style={{ width: 80, height: 80, borderRadius: 18, background: 'rgba(255,255,255,0.05)' }} />
+                  : <Avatar name={name} size={80} />
+                }
                 <div>
-                  <motion.h2
-                    initial={{ opacity: 0, x: -20 }}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span className="section-label">Student Profile</span>
+                  </div>
+                  <motion.h1
+                    initial={{ opacity: 0, x: -16 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="font-black text-3xl text-foreground"
+                    className="font-display"
+                    style={{ fontWeight: 800, fontSize: 28, color: 'rgba(255,255,255,0.95)', lineHeight: 1.1, marginBottom: 4 }}
                   >
-                    {name}
-                  </motion.h2>
+                    {name || '—'}
+                  </motion.h1>
                   {(profile?.title || profile?.current_title) && (
-                    <p className="text-primary font-semibold text-sm mt-0.5">
+                    <div style={{ fontSize: 13, color: '#6ee7b7', fontWeight: 500, marginBottom: 10 }}>
                       {profile.title || profile.current_title}
-                    </p>
+                    </div>
                   )}
-                  <div className="flex flex-wrap items-center gap-3 mt-2">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                     {email && (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Mail className="w-3.5 h-3.5" /> {email}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                        <Mail size={11} /> {email}
                       </span>
                     )}
                     {(profile?.phone || profile?.phone_number) && (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Phone className="w-3.5 h-3.5" /> {profile.phone || profile.phone_number}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                        <Phone size={11} /> {profile.phone || profile.phone_number}
                       </span>
                     )}
                     {(profile?.location || profile?.city) && (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <MapPin className="w-3.5 h-3.5" /> {profile.location || profile.city}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                        <MapPin size={11} /> {profile.location || profile.city}
                       </span>
                     )}
                   </div>
                   {(profile?.summary || profile?.bio) && (
-                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed max-w-lg line-clamp-2 italic">
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 10, lineHeight: 1.65, maxWidth: 460, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontStyle: 'italic' }}>
                       "{profile.summary || profile.bio}"
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Right — Score Ring */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-                  <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">AI Score</span>
-                </div>
+              {/* Right: Score */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 {loading
-                  ? <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                  : <ScoreRing score={score} size={100} />
+                  ? <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 size={24} style={{ color: '#6ee7b7', animation: 'spin 1s linear infinite' }} /></div>
+                  : <ScoreArc score={score} />
                 }
-                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
-                  score >= 80 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                  : score >= 60 ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                }`}>
-                  {scoreLabel}
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '4px 14px', borderRadius: 100, letterSpacing: '0.06em',
+                  fontFamily: 'Syne, sans-serif',
+                  color: scoreColor, background: `${scoreColor}12`, border: `1px solid ${scoreColor}25`
+                }}>
+                  {scoreLabel.toUpperCase()}
                 </span>
               </div>
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/10">
-              {[
-                { icon: Code, label: 'Skills', value: skills.length, color: 'text-blue-400', bg: 'border-blue-500/20 bg-blue-500/5', delay: 0.3 },
-                { icon: Briefcase, label: 'Experience', value: experience.length, color: 'text-violet-400', bg: 'border-violet-500/20 bg-violet-500/5', delay: 0.35 },
-                { icon: GraduationCap, label: 'Education', value: education.length, color: 'text-emerald-400', bg: 'border-emerald-500/20 bg-emerald-500/5', delay: 0.4 },
-                { icon: Calendar, label: 'Sessions', value: sessions.length, color: 'text-orange-400', bg: 'border-orange-500/20 bg-orange-500/5', delay: 0.45 },
-              ].map(s => (
-                <StatCard key={s.label} {...s} />
-              ))}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+              <StatPill icon={Code} label="Skills" value={skills.length} color="#38bdf8" delay={0.3} />
+              <StatPill icon={Briefcase} label="Experience" value={experience.length} color="#a78bfa" delay={0.35} />
+              <StatPill icon={GraduationCap} label="Education" value={education.length} color="#6ee7b7" delay={0.4} />
+              <StatPill icon={Calendar} label="Sessions" value={sessions.length} color="#fbbf24" delay={0.45} />
             </div>
-          </div>
 
-          {/* Update Resume CTA */}
-          <div className="relative px-8 pb-6">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => router.push('/dashboard/resume')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-primary/30 bg-primary/10 text-primary text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-all"
-            >
-              <FileText className="w-4 h-4" />
-              Update Resume
-              <ArrowRight className="w-3.5 h-3.5" />
-            </motion.button>
+            {/* CTA */}
+            <button className="btn-primary" onClick={() => router.push('/dashboard/resume')}>
+              <FileText size={13} /> Update Resume
+            </button>
           </div>
         </motion.div>
 
-        {/* ── Tab Navigation ── */}
+        {/* ── TAB BAR ──────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex items-center gap-2 p-1.5 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm mb-6"
+          transition={{ delay: 0.35 }}
+          style={{ display: 'flex', gap: 6, padding: '6px', borderRadius: 50, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)', marginBottom: 20, overflowX: 'auto' }}
+          className="scrollbar-hide"
         >
-          <TabBtn label="Overview" icon={Activity} active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-          <TabBtn label="Skills" icon={Code} active={activeTab === 'skills'} onClick={() => setActiveTab('skills')} badge={skills.length} />
-          <TabBtn label="Experience" icon={Briefcase} active={activeTab === 'experience'} onClick={() => setActiveTab('experience')} badge={experience.length + education.length} />
-          <TabBtn label="Sessions" icon={Calendar} active={activeTab === 'sessions'} onClick={() => setActiveTab('sessions')} badge={sessions.length} />
+          {tabs.map(t => (
+            <button key={t.id} className={`tab-pill ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+              <t.icon size={13} />
+              {t.label}
+              {t.badge > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100, fontFamily: 'Syne, sans-serif',
+                  background: activeTab === t.id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+                  color: activeTab === t.id ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)'
+                }}>{t.badge}</span>
+              )}
+            </button>
+          ))}
         </motion.div>
 
-        {/* ── Tab Content ── */}
+        {/* ── TAB CONTENT ──────────────────────────────────── */}
         <AnimatePresence mode="wait">
 
-          {/* OVERVIEW TAB */}
+          {/* OVERVIEW */}
           {activeTab === 'overview' && (
-            <motion.div
-              key="overview"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-5"
-            >
-              {/* Top skills preview */}
-              <div className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                      <Star className="w-4 h-4 text-blue-400" />
-                    </div>
-                    <h3 className="font-bold text-foreground">Top Skills</h3>
+            <motion.div key="overview" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Skills preview */}
+              {skills.length > 0 && (
+                <div className="glass-card" style={{ padding: '24px 28px' }}>
+                  <SectionHeader icon={Star} label="Top Skills" accent="#38bdf8" action="View all" onAction={() => setActiveTab('skills')} />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {skills.slice(0, 15).map((s, i) => <SkillChip key={s} skill={s} index={i} />)}
+                    {skills.length > 15 && (
+                      <button onClick={() => setActiveTab('skills')} style={{
+                        padding: '5px 13px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+                        background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)',
+                        color: '#38bdf8', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif'
+                      }}>+{skills.length - 15} more</button>
+                    )}
                   </div>
-                  <button onClick={() => setActiveTab('skills')} className="flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-opacity font-medium">
-                    View all <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {skills.slice(0, 15).map((skill, i) => <SkillTag key={skill} skill={skill} index={i} />)}
-                  {skills.length > 15 && (
-                    <button onClick={() => setActiveTab('skills')} className="px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all">
-                      +{skills.length - 15} more
-                    </button>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* Recent experience */}
               {experience.length > 0 && (
-                <div className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
-                        <Briefcase className="w-4 h-4 text-violet-400" />
-                      </div>
-                      <h3 className="font-bold text-foreground">Recent Experience</h3>
-                    </div>
-                    <button onClick={() => setActiveTab('experience')} className="flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-opacity font-medium">
-                      View all <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                <div className="glass-card" style={{ padding: '24px 28px' }}>
+                  <SectionHeader icon={Briefcase} label="Recent Experience" accent="#a78bfa" action="View all" onAction={() => setActiveTab('experience')} />
                   {experience.slice(0, 2).map((job, i) => (
-                    <TimelineItem
-                      key={i} index={i}
+                    <TimelineEntry key={i} index={i}
                       icon={Briefcase}
                       title={job.title || job.role || job.position || 'Role'}
                       subtitle={job.company || job.company_name || ''}
                       meta={job.duration || job.period || job.dates}
                       description={job.description || job.responsibilities}
-                      color="bg-gradient-to-br from-violet-500 to-purple-600"
+                      accentColor="#a78bfa"
                       isLast={i === Math.min(experience.length, 2) - 1}
                     />
                   ))}
@@ -516,237 +776,132 @@ export default function StudentProfilePage() {
 
               {/* Recent sessions */}
               {sessions.length > 0 && (
-                <div className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
-                        <Calendar className="w-4 h-4 text-orange-400" />
-                      </div>
-                      <h3 className="font-bold text-foreground">Recent Sessions</h3>
-                    </div>
-                    <button onClick={() => setActiveTab('sessions')} className="flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-opacity font-medium">
-                      View all <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {sessions.slice(0, 2).map((session, i) => <SessionCard key={session._id || i} session={session} index={i} />)}
+                <div className="glass-card" style={{ padding: '24px 28px' }}>
+                  <SectionHeader icon={Calendar} label="Recent Sessions" accent="#fbbf24" action="View all" onAction={() => setActiveTab('sessions')} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {sessions.slice(0, 2).map((s, i) => <SessionCard key={s._id || i} session={s} onCancel={handleCancel} cancelling={cancelling} index={i} />)}
                   </div>
                 </div>
               )}
 
               {/* Empty state */}
               {!loading && skills.length === 0 && experience.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
-                    <FileText className="w-7 h-7 text-primary/60" />
-                  </div>
-                  <h3 className="font-bold text-foreground mb-2">Your profile is empty</h3>
-                  <p className="text-sm text-muted-foreground max-w-sm mb-5">Upload your resume to automatically populate your profile with skills, experience, and education.</p>
-                  <motion.button
-                    whileHover={{ scale: 1.04 }}
-                    onClick={() => router.push('/dashboard/resume')}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/25"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Upload Resume
-                  </motion.button>
+                <div className="glass-card">
+                  <EmptyState icon={FileText} title="Your profile is empty" desc="Upload your resume to auto-populate your skills, experience, and education." btnLabel="Upload Resume" onBtn={() => router.push('/dashboard/resume')} color="#6ee7b7" />
                 </div>
               )}
             </motion.div>
           )}
 
-          {/* SKILLS TAB */}
+          {/* SKILLS */}
           {activeTab === 'skills' && (
-            <motion.div
-              key="skills"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.25 }}
-              className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center">
-                  <Code className="w-4 h-4 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-foreground">All Skills</h3>
-                  <p className="text-xs text-muted-foreground">{skills.length} skills extracted by AI from your resume</p>
-                </div>
+            <motion.div key="skills" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}>
+              <div className="glass-card" style={{ padding: '24px 28px' }}>
+                <SectionHeader icon={Code} label="All Skills" count={skills.length} accent="#38bdf8" />
+                {loading
+                  ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(255,255,255,0.3)', padding: '32px 0' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: 13 }}>Extracting skills from your resume…</span></div>
+                  : skills.length === 0
+                  ? <EmptyState icon={Code} title="No skills yet" desc="Upload your resume to extract your skills automatically." btnLabel="Upload Resume" onBtn={() => router.push('/dashboard/resume')} color="#38bdf8" />
+                  : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {skills.map((s, i) => <SkillChip key={s} skill={s} index={i} />)}
+                    </div>
+                }
               </div>
-              {loading ? (
-                <div className="flex items-center gap-3 text-muted-foreground py-8">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm">Extracting skills...</span>
-                </div>
-              ) : skills.length === 0 ? (
-                <div className="flex items-center gap-3 p-5 rounded-xl bg-secondary/30 border border-border/30">
-                  <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">No skills yet. Upload your resume to extract them automatically.</p>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill, i) => <SkillTag key={skill} skill={skill} index={i} />)}
-                </div>
-              )}
             </motion.div>
           )}
 
-          {/* EXPERIENCE TAB */}
+          {/* EXPERIENCE */}
           {activeTab === 'experience' && (
-            <motion.div
-              key="experience"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-5"
-            >
-              {/* Work Experience */}
-              <div className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center">
-                    <Briefcase className="w-4 h-4 text-violet-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-foreground">Work Experience</h3>
-                    <p className="text-xs text-muted-foreground">{experience.length} positions</p>
-                  </div>
-                </div>
-                {loading ? (
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Loading...</span>
-                  </div>
-                ) : experience.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No experience extracted yet.</p>
-                ) : (
-                  <div>
-                    {experience.map((job, i) => (
-                      <TimelineItem
-                        key={i} index={i}
-                        icon={Briefcase}
-                        title={job.title || job.role || job.position || 'Role'}
-                        subtitle={job.company || job.company_name || ''}
-                        meta={job.duration || job.period || job.dates}
-                        description={job.description || job.responsibilities}
-                        color="bg-gradient-to-br from-violet-500 to-purple-600"
-                        isLast={i === experience.length - 1}
-                      />
-                    ))}
-                  </div>
-                )}
+            <motion.div key="experience" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="glass-card" style={{ padding: '24px 28px' }}>
+                <SectionHeader icon={Briefcase} label="Work Experience" count={experience.length} accent="#a78bfa" />
+                {loading
+                  ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(255,255,255,0.3)' }}><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: 13 }}>Loading…</span></div>
+                  : experience.length === 0
+                  ? <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>No experience extracted yet.</p>
+                  : experience.map((job, i) => (
+                    <TimelineEntry key={i} index={i}
+                      icon={Briefcase}
+                      title={job.title || job.role || job.position || 'Role'}
+                      subtitle={job.company || job.company_name || ''}
+                      meta={job.duration || job.period || job.dates}
+                      description={job.description || job.responsibilities}
+                      accentColor="#a78bfa"
+                      isLast={i === experience.length - 1}
+                    />
+                  ))
+                }
               </div>
-
-              {/* Education */}
-              <div className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                    <GraduationCap className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-foreground">Education</h3>
-                    <p className="text-xs text-muted-foreground">{education.length} entries</p>
-                  </div>
-                </div>
-                {loading ? (
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Loading...</span>
-                  </div>
-                ) : education.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No education extracted yet.</p>
-                ) : (
-                  <div>
-                    {education.map((edu, i) => (
-                      <TimelineItem
-                        key={i} index={i}
-                        icon={GraduationCap}
-                        title={edu.degree || edu.qualification || edu.course || 'Degree'}
-                        subtitle={edu.institution || edu.school || edu.university || ''}
-                        meta={edu.year || edu.graduation_year || edu.period}
-                        color="bg-gradient-to-br from-emerald-500 to-teal-600"
-                        isLast={i === education.length - 1}
-                      />
-                    ))}
-                  </div>
-                )}
+              <div className="glass-card" style={{ padding: '24px 28px' }}>
+                <SectionHeader icon={GraduationCap} label="Education" count={education.length} accent="#6ee7b7" />
+                {loading
+                  ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(255,255,255,0.3)' }}><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: 13 }}>Loading…</span></div>
+                  : education.length === 0
+                  ? <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>No education extracted yet.</p>
+                  : education.map((edu, i) => (
+                    <TimelineEntry key={i} index={i}
+                      icon={GraduationCap}
+                      title={edu.degree || edu.qualification || edu.course || 'Degree'}
+                      subtitle={edu.institution || edu.school || edu.university || ''}
+                      meta={edu.year || edu.graduation_year || edu.period}
+                      accentColor="#6ee7b7"
+                      isLast={i === education.length - 1}
+                    />
+                  ))
+                }
               </div>
             </motion.div>
           )}
 
-          {/* SESSIONS TAB */}
+          {/* SESSIONS */}
           {activeTab === 'sessions' && (
-            <motion.div
-              key="sessions"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.25 }}
-              className="p-6 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
+            <motion.div key="sessions" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}>
+              <div className="glass-card" style={{ padding: '24px 28px' }}>
+                <SectionHeader icon={Calendar} label="Session History" count={sessions.length} accent="#fbbf24" />
 
-              {/* Session stats strip */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 rounded-xl bg-orange-500/15 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-orange-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-foreground">Session History</h3>
-                  <p className="text-xs text-muted-foreground">{sessions.length} total sessions</p>
-                </div>
+                {/* Stats strip */}
                 {sessions.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 font-semibold">
-                      {pendingSessions.length} pending
-                    </span>
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold">
-                      {acceptedSessions.length} confirmed
-                    </span>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                    {pendingCount > 0 && <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>{pendingCount} pending</span>}
+                    {confirmedCount > 0 && <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: 'rgba(110,231,183,0.08)', border: '1px solid rgba(110,231,183,0.2)', color: '#6ee7b7' }}>{confirmedCount} confirmed</span>}
                   </div>
                 )}
-              </div>
 
-              {sessionsLoading ? (
-                <div className="flex items-center gap-3 text-muted-foreground py-8">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm">Loading sessions...</span>
-                </div>
-              ) : sessions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
-                    <Send className="w-6 h-6 text-blue-400/60" />
+                {/* Filter pills */}
+                {sessions.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Filter size={12} style={{ color: 'rgba(255,255,255,0.25)' }} />
+                    {['all', 'pending', 'accepted', 'declined', 'cancelled'].map(f => (
+                      <button key={f} onClick={() => setSessionFilter(f)} style={{
+                        padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                        background: sessionFilter === f ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${sessionFilter === f ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'}`,
+                        color: sessionFilter === f ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
+                        transition: 'all 0.15s', textTransform: 'capitalize'
+                      }}>
+                        {f === 'accepted' ? 'Confirmed' : f.charAt(0).toUpperCase() + f.slice(1)}
+                        {f !== 'all' && <span style={{ marginLeft: 4, opacity: 0.6 }}>({sessions.filter(s => s.status === f).length})</span>}
+                      </button>
+                    ))}
                   </div>
-                  <p className="font-bold text-foreground mb-1">No sessions yet</p>
-                  <p className="text-xs text-muted-foreground mb-5 max-w-xs">
-                    Request a session with a mentor to start your mentoring journey
-                  </p>
-                  <motion.button
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => router.push('/dashboard/mentors')}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/25 hover:opacity-90 transition-all"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                    Browse Mentors
-                  </motion.button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {sessions.map((session, i) => (
-                    <SessionCard key={session._id || i} session={session} index={i} />
-                  ))}
-                </div>
-              )}
+                )}
+
+                {sessionsLoading
+                  ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(255,255,255,0.3)', padding: '32px 0' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /><span style={{ fontSize: 13 }}>Loading sessions…</span></div>
+                  : filteredSessions.length === 0 && sessions.length === 0
+                  ? <EmptyState icon={Send} title="No sessions yet" desc="Request a session with a mentor to start your mentoring journey." btnLabel="Browse Mentors" onBtn={() => router.push('/dashboard/mentors')} color="#fbbf24" />
+                  : filteredSessions.length === 0
+                  ? <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.3)', padding: '24px 0' }}>No {sessionFilter} sessions.</p>
+                  : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {filteredSessions.map((s, i) => <SessionCard key={s.session_id || s._id || i} session={s} onCancel={handleCancel} cancelling={cancelling} index={i} />)}
+                    </div>
+                }
+              </div>
             </motion.div>
           )}
+
         </AnimatePresence>
       </div>
-    </>
+    </div>
   );
 }
