@@ -1,96 +1,97 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Sparkles, Shield, FileText, Cookie, Mail, Github, Linkedin, Twitter } from 'lucide-react';
+import { Sparkles, Shield, FileText, Cookie, Mail, Github, Linkedin, Twitter, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 const footerLinks = {
   Product: [
-    { label: 'Overview', href: '/dashboard' },
-    { label: 'Resume Analysis', href: '/dashboard/resume' },
-    { label: 'Job Matches', href: '/dashboard/jobs' },
+    { label: 'Overview',       href: '/dashboard' },
+    { label: 'Resume Analysis',href: '/dashboard/resume' },
+    { label: 'Job Matches',    href: '/dashboard/jobs' },
     { label: 'Mentor Connect', href: '/dashboard/mentors' },
-    { label: 'Skill Gap', href: '/dashboard/skills' },
+    { label: 'Skill Gap',      href: '/dashboard/skills' },
+    { label: 'LinkedIn Optimizer', href: '/dashboard/linkedin' },
   ],
   Company: [
-    { label: 'About LilByte', href: '/about' },
+    { label: 'About',      href: '/about' },
     { label: 'Contact Us', href: '/contact' },
-    { label: 'Blog', href: '/blog' },
+    { label: 'Blog',       href: '/blog' },
   ],
   Legal: [
-    { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Terms of Service', href: '/terms' },
-    { label: 'Cookie Policy', href: '/cookies' },
+    { label: 'Privacy Policy',  href: '/privacy' },
+    { label: 'Terms of Service',href: '/terms' },
+    { label: 'Cookie Policy',   href: '/cookies' },
   ],
 };
 
 const socials = [
-  {
-    icon: Github,
-    href: 'https://github.com/manjeet0505',
-    label: 'GitHub',
-  },
-  {
-    icon: Linkedin,
-    href: 'https://www.linkedin.com/in/manjeet-mishra-175705260',
-    label: 'LinkedIn',
-  },
-  {
-    icon: Twitter,
-    href: 'https://x.com/mishramanjeet26',
-    label: 'Twitter / X',
-  },
-  {
-    icon: Mail,
-    href: 'mailto:lilbyteorg@gmail.com',
-    label: 'Email',
-  },
+  { icon: Github,   href: 'https://github.com/manjeet0505',                          label: 'GitHub' },
+  { icon: Linkedin, href: 'https://www.linkedin.com/in/manjeet-mishra-175705260',    label: 'LinkedIn' },
+  { icon: Twitter,  href: 'https://x.com/mishramanjeet26',                           label: 'Twitter / X' },
+  { icon: Mail,     href: 'mailto:mishramanjeet26@gmail.com',                        label: 'Email' },
 ];
 
 const techStack = ['FastAPI', 'Next.js 14', 'GPT-4o', 'Qdrant', 'MongoDB'];
 
 export default function Footer() {
   return (
-    <footer className="relative border-t border-border/40 bg-card/30 backdrop-blur-sm">
-      {/* Top glow */}
+    <footer className="relative border-t border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden">
+
+      {/* ── Ambient glows ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute -top-32 left-1/4 w-96 h-96 rounded-full opacity-[0.04]"
+          style={{ background: 'radial-gradient(circle, rgba(59,130,246,1), transparent 70%)' }}
+        />
+        <div
+          className="absolute -top-20 right-1/4 w-64 h-64 rounded-full opacity-[0.03]"
+          style={{ background: 'radial-gradient(circle, rgba(139,92,246,1), transparent 70%)' }}
+        />
+      </div>
+
+      {/* ── Top gradient line ── */}
       <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-px"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent)' }}
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.6), rgba(139,92,246,0.4), transparent)' }}
       />
 
-      <div className="max-w-7xl mx-auto px-6 py-14">
-        {/* Main grid */}
+      <div className="relative max-w-7xl mx-auto px-6 py-14">
+
+        {/* ── Main grid ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
 
           {/* Brand column */}
           <div className="lg:col-span-2">
-            {/* LilByte brand */}
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                A product by
-              </span>
-            </div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="font-black text-xl text-foreground tracking-tight">
-                Lil<span className="text-primary">Byte</span>
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-semibold">
-                Startup
-              </span>
-            </div>
 
-            {/* S3 Dashboard sub-brand */}
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                <Sparkles className="w-3.5 h-3.5 text-white" />
+            {/* Logo mark */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                {/* Pulse ring */}
+                <div className="absolute inset-0 rounded-xl bg-blue-500/20 animate-ping" style={{ animationDuration: '3s' }} />
               </div>
-              <span className="font-bold text-base text-foreground">S3 Dashboard</span>
-              <span className="text-xs text-muted-foreground">by LilByte</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-xl text-foreground tracking-tight leading-none">
+                    S3 <span className="text-primary">Dashboard</span>
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-semibold">
+                    Beta
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-yellow-500" />
+                  AI-powered career intelligence
+                </p>
+              </div>
             </div>
 
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-5">
-              AI-powered career intelligence platform helping students land their dream roles faster
-              with resume analysis, smart job matching, and expert mentorship.
+              Helping students land their dream roles faster — with resume analysis,
+              smart job matching, skill gap insights, and expert mentorship. All in one place.
             </p>
 
             {/* Tech stack badges */}
@@ -98,7 +99,12 @@ export default function Footer() {
               {techStack.map(tech => (
                 <span
                   key={tech}
-                  className="text-xs px-2 py-0.5 rounded-md bg-primary/8 border border-primary/15 text-primary/80 font-medium"
+                  className="text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors"
+                  style={{
+                    background: 'rgba(59,130,246,0.06)',
+                    borderColor: 'rgba(59,130,246,0.15)',
+                    color: 'rgba(147,197,253,0.9)',
+                  }}
                 >
                   {tech}
                 </span>
@@ -113,12 +119,13 @@ export default function Footer() {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  whileHover={{ y: -2 }}
-                  className="w-8 h-8 rounded-lg border border-border/60 bg-secondary/30 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                  whileHover={{ y: -3, scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-9 h-9 rounded-xl border border-border/60 bg-secondary/30 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all"
                   aria-label={label}
                   title={label}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-4 h-4" />
                 </motion.a>
               ))}
             </div>
@@ -127,7 +134,11 @@ export default function Footer() {
           {/* Link columns */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span
+                  className="inline-block w-4 h-px"
+                  style={{ background: 'linear-gradient(90deg, rgba(59,130,246,0.7), transparent)' }}
+                />
                 {category}
               </h4>
               <ul className="space-y-2.5">
@@ -135,8 +146,9 @@ export default function Footer() {
                   <li key={label}>
                     <Link
                       href={href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors group flex items-center gap-1.5"
                     >
+                      <span className="w-0 group-hover:w-2 h-px bg-primary transition-all duration-200 opacity-0 group-hover:opacity-100" />
                       {label}
                     </Link>
                   </li>
@@ -146,10 +158,18 @@ export default function Footer() {
           ))}
         </div>
 
-        {/* Contact emails row */}
-        <div className="flex flex-wrap gap-4 mb-8 p-4 rounded-2xl border border-border/30 bg-secondary/20">
+        {/* ── Contact card ── */}
+        <div
+          className="flex flex-wrap gap-4 mb-8 p-4 rounded-2xl border"
+          style={{
+            background: 'linear-gradient(135deg, rgba(59,130,246,0.05), rgba(139,92,246,0.04))',
+            borderColor: 'rgba(59,130,246,0.15)',
+          }}
+        >
           <div className="flex items-center gap-2">
-            <Mail className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Mail className="w-3 h-3 text-primary" />
+            </div>
             <span className="text-xs text-muted-foreground">General:</span>
             <a
               href="mailto:lilbyteorg@gmail.com"
@@ -160,7 +180,9 @@ export default function Footer() {
           </div>
           <div className="w-px h-4 bg-border/40 hidden sm:block self-center" />
           <div className="flex items-center gap-2">
-            <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <div className="w-6 h-6 rounded-lg bg-secondary/60 flex items-center justify-center">
+              <Mail className="w-3 h-3 text-muted-foreground" />
+            </div>
             <span className="text-xs text-muted-foreground">Founder:</span>
             <a
               href="mailto:mishramanjeet26@gmail.com"
@@ -171,18 +193,18 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
+        {/* ── Bottom bar ── */}
         <div className="border-t border-border/40 pt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground text-center sm:text-left">
               © {new Date().getFullYear()}{' '}
-              <span className="font-semibold text-foreground">LilByte</span>.
-              {' '}S3 Dashboard — All rights reserved. Built by{' '}
+              <span className="font-semibold text-foreground">S3 Dashboard</span>
+              {' '}— All rights reserved. Built by{' '}
               <a
                 href="https://www.linkedin.com/in/manjeet-mishra-175705260"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary hover:underline"
+                className="text-primary hover:underline font-medium"
               >
                 Manjeet Kumar Mishra
               </a>
@@ -190,25 +212,25 @@ export default function Footer() {
             </p>
 
             <div className="flex items-center gap-4">
-              <Link href="/privacy" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <Shield className="w-3 h-3" />
-                Privacy
-              </Link>
-              <Link href="/terms" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <FileText className="w-3 h-3" />
-                Terms
-              </Link>
-              <Link href="/cookies" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <Cookie className="w-3 h-3" />
-                Cookies
-              </Link>
-              <Link href="/contact" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <Mail className="w-3 h-3" />
-                Contact
-              </Link>
+              {[
+                { href: '/privacy',  icon: Shield,   label: 'Privacy' },
+                { href: '/terms',    icon: FileText,  label: 'Terms' },
+                { href: '/cookies',  icon: Cookie,    label: 'Cookies' },
+                { href: '/contact',  icon: Mail,      label: 'Contact' },
+              ].map(({ href, icon: Icon, label }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Icon className="w-3 h-3" />
+                  {label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
+
       </div>
     </footer>
   );
