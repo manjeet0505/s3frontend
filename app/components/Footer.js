@@ -5,6 +5,7 @@ import { Sparkles, Shield, FileText, Cookie, Mail, Github, Linkedin, Twitter, Za
 import Link from 'next/link';
 
 const footerLinks = {
+  /* Product Footer Link*/
   Product: [
     { label: 'Overview',       href: '/dashboard' },
     { label: 'Resume Analysis',href: '/dashboard/resume' },
