@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Sparkles, Shield, FileText, Cookie, Mail, Github, Linkedin, Twitter, Zap, ArrowRight, Users, Briefcase, Star, TrendingUp } from 'lucide-react';
+import { Sparkles, Shield, FileText, Cookie, Mail, Github, Linkedin, Twitter, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 const footerLinks = {
@@ -34,81 +34,26 @@ const socials = [
 
 const techStack = ['FastAPI', 'Next.js 14', 'GPT-4o', 'Qdrant', 'MongoDB'];
 
-const stats = [
-  { icon: Users,      value: '12,000+', label: 'Students Helped' },
-  { icon: FileText,   value: '48,000+', label: 'Resumes Analyzed' },
-  { icon: Briefcase,  value: '2.4M+',   label: 'Jobs Matched' },
-  { icon: Star,       value: '4.9 / 5', label: 'Avg. Rating' },
-  { icon: TrendingUp, value: '73%',     label: 'Interview Rate' },
-];
-
 export default function Footer() {
   return (
     <footer className="relative border-t border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden">
 
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 left-1/3 w-80 h-80 rounded-full opacity-[0.05]"
+        <div className="absolute -top-40 left-1/3 w-80 h-80 rounded-full opacity-[0.04]"
           style={{ background: 'radial-gradient(circle, rgba(59,130,246,1), transparent 70%)' }} />
-        <div className="absolute top-0 right-1/4 w-56 h-56 rounded-full opacity-[0.04]"
+        <div className="absolute top-0 right-1/4 w-56 h-56 rounded-full opacity-[0.03]"
           style={{ background: 'radial-gradient(circle, rgba(139,92,246,1), transparent 70%)' }} />
       </div>
 
       {/* Top gradient line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.7), rgba(139,92,246,0.5), transparent)' }} />
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.6), rgba(139,92,246,0.4), transparent)' }} />
 
       <div className="relative max-w-6xl mx-auto px-6">
 
-        {/* CTA Banner */}
-        <div className="py-10 border-b border-border/30">
-          <div
-            className="relative rounded-2xl px-8 py-8 overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6"
-            style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(109,40,217,0.10))' }}
-          >
-            <div className="absolute inset-0 rounded-2xl border border-blue-500/20 pointer-events-none" />
-            <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full opacity-10"
-              style={{ background: 'radial-gradient(circle, rgba(99,102,241,1), transparent 70%)' }} />
-            <div className="relative z-10">
-              <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-1 flex items-center gap-2">
-                <Zap className="w-3 h-3 text-yellow-400" /> Your Career, Accelerated
-              </p>
-              <h3 className="text-xl font-bold text-foreground">Ready to land your dream role?</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                Join thousands of students using AI-powered tools to get hired faster.
-              </p>
-            </div>
-            <Link
-              href="/auth/signup"
-              className="relative z-10 flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105 active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}
-            >
-              Get Started Free <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Stats bar */}
-        <div className="py-8 border-b border-border/30">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {stats.map(({ icon: Icon, value, label }) => (
-              <motion.div
-                key={label}
-                whileHover={{ y: -2 }}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border/30 bg-secondary/10 hover:bg-secondary/20 hover:border-primary/20 transition-all text-center"
-              >
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Icon className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <span className="text-base font-bold text-foreground leading-none">{value}</span>
-                <span className="text-xs text-muted-foreground">{label}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
         {/* Main grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 py-12 border-b border-border/30">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 py-14 border-b border-border/30">
 
           {/* Brand */}
           <div className="lg:col-span-2">
@@ -131,10 +76,13 @@ export default function Footer() {
                 </p>
               </div>
             </div>
+
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-5">
               Helping students land their dream roles faster — with resume analysis,
               smart job matching, skill gap insights, and expert mentorship.
             </p>
+
+            {/* Tech badges */}
             <div className="flex flex-wrap gap-1.5 mb-6">
               {techStack.map(tech => (
                 <span key={tech} className="text-xs px-2.5 py-1 rounded-lg border font-medium"
@@ -143,6 +91,8 @@ export default function Footer() {
                 </span>
               ))}
             </div>
+
+            {/* Socials */}
             <div className="flex items-center gap-2">
               {socials.map(({ icon: Icon, href, label }) => (
                 <motion.a key={label} href={href} target="_blank" rel="noopener noreferrer"
