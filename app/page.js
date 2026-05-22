@@ -1,9 +1,8 @@
 'use client';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Brain, Briefcase, Users, TrendingUp, ArrowRight, Sparkles, ChevronRight, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
 
 // Landing sections
 import TrustedBy from './components/landing/TrustedBy';
@@ -12,59 +11,57 @@ import HowItWorks from './components/landing/HowItWorks';
 import Testimonials from './components/landing/Testimonials';
 import Pricing from './components/landing/Pricing';
 import Footer from './components/Footer';
+import AuthModal from './components/AuthModal';
 
-// ─── Typewriter hook ───────────────────────────────────────────────────────────
-function useTypewriter(words, speed = 80, pause = 1800) {
-  const [display, setDisplay] = useState('');
-  const [wordIdx, setWordIdx] = useState(0);
-  const [charIdx, setCharIdx] = useState(0);
-  const [deleting, setDeleting] = useState(false);
+// ─── Role cycler — inline fade, inherits parent font size ─────────────────────
+const roles = ['AI Engineer', 'Full Stack Dev', 'Backend Engineer', 'SDE-1', 'Frontend Dev'];
 
+function RoleWord() {
+  const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const word = words[wordIdx];
-    let timeout;
-    if (!deleting && charIdx <= word.length) {
-      timeout = setTimeout(() => setCharIdx((c) => c + 1), speed);
-      setDisplay(word.slice(0, charIdx));
-    } else if (!deleting && charIdx > word.length) {
-      timeout = setTimeout(() => setDeleting(true), pause);
-    } else if (deleting && charIdx >= 0) {
-      timeout = setTimeout(() => setCharIdx((c) => c - 1), speed / 2);
-      setDisplay(word.slice(0, charIdx));
-    } else {
-      setDeleting(false);
-      setWordIdx((w) => (w + 1) % words.length);
-    }
-    return () => clearTimeout(timeout);
-  }, [charIdx, deleting, wordIdx, words, speed, pause]);
-
-  return display;
+    const t = setInterval(() => setIdx((i) => (i + 1) % roles.length), 2600);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <AnimatePresence mode="wait">
+      <motion.span
+        key={idx}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.4, ease: 'easeInOut' }}
+        className="bg-gradient-to-r from-blue-400 via-violet-400 to-purple-400 bg-clip-text text-transparent"
+      >
+        {roles[idx]}
+      </motion.span>
+    </AnimatePresence>
+  );
 }
 
-// ─── AI Agents grid ────────────────────────────────────────────────────────────
+// ─── AI Agents grid ───────────────────────────────────────────────────────────
 const agents = [
-  { icon: Brain,      label: 'Resume Agent',    desc: 'Multi-pass ATS scoring, keyword injection & full rewrite',  color: 'from-blue-500 to-cyan-400' },
-  { icon: Briefcase,  label: 'Job Match Agent',  desc: 'Vector search across 2.4M+ jobs ranked by your fit score', color: 'from-violet-500 to-purple-400' },
-  { icon: TrendingUp, label: 'Skill Gap Agent',  desc: 'Personalised learning roadmap with curated resources',      color: 'from-emerald-500 to-teal-400' },
-  { icon: Users,      label: 'Mentor Agent',     desc: 'Connect with senior engineers at your target companies',    color: 'from-orange-500 to-amber-400' },
+  { icon: Brain,      label: 'Resume Agent',   desc: 'Multi-pass ATS scoring, keyword injection & full rewrite',  color: 'from-blue-500 to-cyan-400' },
+  { icon: Briefcase,  label: 'Job Match Agent', desc: 'Vector search across 2.4M+ live jobs ranked by your fit',  color: 'from-violet-500 to-purple-400' },
+  { icon: TrendingUp, label: 'Skill Gap Agent', desc: 'Personalised learning roadmap with curated resources',      color: 'from-emerald-500 to-teal-400' },
+  { icon: Users,      label: 'Mentor Agent',    desc: 'Connect with senior engineers at your target companies',   color: 'from-orange-500 to-amber-400' },
 ];
 
-// ─── Stats bar ─────────────────────────────────────────────────────────────────
+// ─── Honest beta stats ────────────────────────────────────────────────────────
 const stats = [
-  { value: '12K+',  label: 'Students helped' },
-  { value: '2.4M+', label: 'Jobs matched' },
-  { value: '48K+',  label: 'Resumes scored' },
-  { value: '73%',   label: 'Interview rate' },
-  { value: '4.9★',  label: 'Avg rating' },
+  { value: '5',     label: 'AI agents built' },
+  { value: '2.4M+', label: 'Jobs indexed' },
+  { value: '34',    label: 'DSA patterns' },
+  { value: '100%',  label: 'Free to start' },
+  { value: 'GPT-4o',label: 'Powered by' },
 ];
 
 export default function LandingPage() {
-  const roles = ['AI Engineer', 'Full Stack Dev', 'Backend Engineer', 'SDE-1', 'Frontend Dev'];
-  const typed = useTypewriter(roles);
-
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* ── Navbar ─────────────────────────────────────────────────────────── */}
+
+      {/* ── Navbar ──────────────────────────────────────────────────────────── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 backdrop-blur-xl bg-slate-950/70">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
@@ -80,39 +77,35 @@ export default function LandingPage() {
 
           <div className="hidden md:flex items-center gap-6 text-sm text-slate-400">
             <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-            <a href="#how" className="hover:text-white transition-colors">How it works</a>
+            <a href="#pricing"  className="hover:text-white transition-colors">Pricing</a>
+            <a href="#how"      className="hover:text-white transition-colors">How it works</a>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/auth/login" className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block">
+            <button onClick={() => { setAuthMode('login'); setAuthOpen(true); }} className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block">
               Sign in
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-            >
+            </button>
+            <button onClick={() => { setAuthMode('signup'); setAuthOpen(true); }} className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-sm font-semibold text-white hover:opacity-90 transition-opacity">
               Get Started <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            </button>
           </div>
         </div>
       </nav>
 
-      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+      {/* ── Hero ────────────────────────────────────────────────────────────── */}
       <section className="relative min-h-screen flex items-center justify-center px-4 pt-16 overflow-hidden">
         {/* Background mesh */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-blue-500/10 blur-3xl" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-violet-500/10 blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full bg-indigo-500/5 blur-3xl" />
-          {/* Grid */}
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '60px 60px' }}
           />
         </div>
 
-        <div className="relative max-w-4xl mx-auto text-center">
+        <div className="relative max-w-4xl mx-auto text-center w-full">
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -125,19 +118,15 @@ export default function LandingPage() {
             <ChevronRight className="w-3 h-3" />
           </motion.div>
 
-          {/* Headline */}
+          {/* Headline — single h1, role word inherits font size, zero layout shift */}
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-white mb-6 leading-tight tracking-tight"
+            className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-white leading-tight tracking-tight"
           >
             Land Your Dream{' '}
-            <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">
-              {typed}
-              <span className="animate-pulse">|</span>
-            </span>
-            <br />
+            <span className="block"><RoleWord /></span>
             Role with AI
           </motion.h1>
 
@@ -146,9 +135,10 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mt-8 mb-10 leading-relaxed px-4"
           >
-            Five specialised AI agents — resume scorer, job matcher, skill gap analyser, mock interviewer, and LinkedIn optimizer — working together so you get offers, not rejections.
+            Five specialised AI agents — resume scorer, job matcher, skill gap analyser,
+            mock interviewer, and LinkedIn optimizer — working together so you get offers, not rejections.
           </motion.p>
 
           {/* CTAs */}
@@ -156,32 +146,29 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 px-4"
           >
-            <Link
-              href="/auth/signup"
-              className="flex items-center gap-2 px-7 py-3.5 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-white font-semibold text-base hover:opacity-90 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5"
-            >
+            <button onClick={() => { setAuthMode('signup'); setAuthOpen(true); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-white font-semibold text-base hover:opacity-90 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5">
               Start Free — No Credit Card <ArrowRight className="w-4 h-4" />
-            </Link>
+            </button>
             <a
               href="#features"
-              className="flex items-center gap-2 px-7 py-3.5 rounded-full border border-white/10 text-slate-300 font-medium text-base hover:bg-white/5 hover:text-white transition-all"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3.5 rounded-full border border-white/10 text-slate-300 font-medium text-base hover:bg-white/5 hover:text-white transition-all"
             >
               See how it works
             </a>
           </motion.div>
 
-          {/* Stats */}
+          {/* Stats — honest beta numbers */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4 }}
-            className="grid grid-cols-3 sm:grid-cols-5 gap-4"
+            className="grid grid-cols-3 sm:grid-cols-5 gap-4 px-4"
           >
             {stats.map((s) => (
               <div key={s.label} className="text-center">
-                <p className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">{s.value}</p>
+                <p className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">{s.value}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
               </div>
             ))}
@@ -200,15 +187,15 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ── Trusted By ─────────────────────────────────────────────────────── */}
+      {/* ── Trusted By ──────────────────────────────────────────────────────── */}
       <TrustedBy />
 
-      {/* ── Feature Showcase ───────────────────────────────────────────────── */}
+      {/* ── Feature Showcase ────────────────────────────────────────────────── */}
       <div id="features">
         <FeatureShowcase />
       </div>
 
-      {/* ── AI Agents Grid ─────────────────────────────────────────────────── */}
+      {/* ── AI Agents Grid ──────────────────────────────────────────────────── */}
       <section className="py-24 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -257,25 +244,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── How It Works ───────────────────────────────────────────────────── */}
+      {/* ── How It Works ────────────────────────────────────────────────────── */}
       <div id="how">
         <HowItWorks />
       </div>
 
-      {/* ── Testimonials ───────────────────────────────────────────────────── */}
+      {/* ── Testimonials ────────────────────────────────────────────────────── */}
       <Testimonials />
 
-      {/* ── Pricing ────────────────────────────────────────────────────────── */}
+      {/* ── Pricing ─────────────────────────────────────────────────────────── */}
       <Pricing />
 
-      {/* ── Final CTA ──────────────────────────────────────────────────────── */}
+      {/* ── Final CTA ───────────────────────────────────────────────────────── */}
       <section className="py-24 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="p-12 rounded-3xl border border-white/10 bg-gradient-to-b from-slate-800/50 to-slate-900/50 relative overflow-hidden"
+            className="p-8 sm:p-12 rounded-3xl border border-white/10 bg-gradient-to-b from-slate-800/50 to-slate-900/50 relative overflow-hidden"
           >
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-0 left-0 w-48 h-48 rounded-full bg-blue-500/10 blur-2xl" />
@@ -285,14 +272,14 @@ export default function LandingPage() {
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center mx-auto mb-6">
                 <Zap className="w-7 h-7 text-white" />
               </div>
-              <h2 className="text-4xl font-bold text-white mb-4">Ready to land your dream role?</h2>
-              <p className="text-slate-400 mb-8 text-lg">Join 12,000+ students who stopped applying blindly and started landing interviews.</p>
-              <Link
-                href="/auth/signup"
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to land your dream role?</h2>
+              <p className="text-slate-400 mb-8 text-base sm:text-lg">Stop applying blindly. Let AI guide every step — from resume to offer.</p>
+              <button
+                onClick={() => { setAuthMode('signup'); setAuthOpen(true); }}
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-white font-semibold text-base hover:opacity-90 transition-all shadow-lg shadow-blue-500/25 hover:-translate-y-0.5"
               >
                 Get Started Free <ArrowRight className="w-4 h-4" />
-              </Link>
+              </button>
               <p className="text-slate-600 text-xs mt-4">No credit card required · Free plan forever</p>
             </div>
           </motion.div>
@@ -300,6 +287,19 @@ export default function LandingPage() {
       </section>
 
       <Footer />
+
+      {/* ── Auth Modal ───────────────────────────────────────────────────────── */}
+      {authOpen && (
+        <AuthModal
+          mode={authMode}
+          onClose={() => setAuthOpen(false)}
+          onLogin={(token, user) => {
+            setAuthOpen(false);
+            window.location.assign(user?.role === 'mentor' ? '/mentor-dashboard' : '/dashboard');
+          }}
+          onModeChange={(m) => setAuthMode(m)}
+        />
+      )}
     </div>
   );
 }
