@@ -43,7 +43,7 @@ const features = [
     icon: Brain,
     color: 'from-orange-500 to-amber-400',
     accent: '#f97316',
-    headline: 'Practice Until You're Unbeatable.',
+    headline: "Practice Until You're Unbeatable.",
     description: 'Role-specific question banks, real-time AI feedback on your answers, confidence scoring, and a STAR-method coach built in.',
     stats: [{ label: 'Questions', value: '1,200+' }, { label: 'Avg score gain', value: '+34%' }, { label: 'Rounds covered', value: '6 types' }],
     mockup: 'interview',
