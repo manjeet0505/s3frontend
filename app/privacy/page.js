@@ -1,91 +1,71 @@
+'use client';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Sparkles, Shield } from 'lucide-react';
 
-export const metadata = {
-  title: 'Privacy Policy — S3 Dashboard',
-  description: 'Privacy Policy for S3 Dashboard',
-};
+const sections = [
+  { title: '1. Information We Collect', body: 'We collect information you provide directly — name, email, phone number, and resume data when you register. We also collect usage analytics to improve our services.' },
+  { title: '2. How We Use Your Information', body: null, list: ['Provide AI-powered career intelligence services', 'Match you with relevant jobs and mentors', 'Analyse your resume and provide skill gap recommendations', 'Send important service notifications', 'Ensure platform security and prevent fraud'] },
+  { title: '3. Data Storage & Security', body: 'Your data is stored in MongoDB Atlas with encryption at rest. Resume files are processed in memory and not stored permanently. JWT authentication with HttpOnly cookies protects your session. All communications use HTTPS.' },
+  { title: '4. AI Processing', body: "Your resume text is sent to OpenAI's GPT-4o API for analysis, governed by OpenAI's data usage policies. We do not use your personal data to train AI models. Job matching uses vector embeddings stored in Qdrant." },
+  { title: '5. Third-Party Services', body: 'We use: OpenAI (AI processing), MongoDB Atlas (database), Qdrant (vector search), Vercel (frontend hosting), Railway (backend hosting), Cloudflare (security). Each has its own privacy policy.' },
+  { title: '6. Your Rights', body: 'You have the right to access, correct, or delete your personal data at any time. Contact us at mishramanjeet26@gmail.com. We will respond within 30 days.' },
+  { title: '7. Data Retention', body: 'We retain your account data for as long as your account is active. You may request deletion at any time by contacting us.' },
+  { title: '8. Contact', body: null, contact: 'mishramanjeet26@gmail.com' },
+];
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-card/50 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-950 text-white">
+      <header className="border-b border-white/5 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-bold text-sm">S3 Dashboard</span>
+            <span className="font-bold text-white">S3 Dashboard</span>
           </Link>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← Back to Home
-          </Link>
+          <Link href="/" className="text-sm text-slate-400 hover:text-white transition-colors">← Back to Home</Link>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-14">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-primary" />
+      <main className="max-w-4xl mx-auto px-6 py-16">
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+          className="flex items-center gap-4 mb-12">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <Shield className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Privacy Policy</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Last updated: April 2026</p>
+            <h1 className="text-4xl font-extrabold">Privacy Policy</h1>
+            <p className="text-slate-500 text-sm mt-0.5">Last updated: April 2026 · S3 Dashboard</p>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="prose prose-invert max-w-none space-y-8 text-muted-foreground">
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">1. Information We Collect</h2>
-            <p className="leading-relaxed">We collect information you provide directly to us, including your name, email address, phone number, and resume data when you register and use S3 Dashboard. We also collect usage data and analytics to improve our services.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">2. How We Use Your Information</h2>
-            <ul className="space-y-2 list-disc list-inside">
-              <li>To provide and improve our AI-powered career intelligence services</li>
-              <li>To match you with relevant job opportunities and mentors</li>
-              <li>To analyze your resume and provide skill gap recommendations</li>
-              <li>To send you important service notifications</li>
-              <li>To ensure platform security and prevent fraud</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">3. Data Storage and Security</h2>
-            <p className="leading-relaxed">Your data is stored securely in MongoDB Atlas with encryption at rest. Resume files are processed in memory and not stored permanently. We use JWT authentication with HttpOnly cookies to protect your session. All API communications use HTTPS.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">4. AI Processing</h2>
-            <p className="leading-relaxed">Your resume text is sent to OpenAI's GPT-4o API for analysis. This data is processed according to OpenAI's data usage policies. We do not use your personal data to train AI models. Job matching uses vector embeddings stored in Qdrant vector database.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">5. Third-Party Services</h2>
-            <p className="leading-relaxed">We use the following third-party services: OpenAI (AI processing), MongoDB Atlas (database), Qdrant (vector search), Vercel (hosting), Railway (backend hosting), Cloudflare (security). Each service has its own privacy policy governing their data use.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">6. Your Rights</h2>
-            <p className="leading-relaxed">You have the right to access, correct, or delete your personal data at any time. To exercise these rights, contact us at mishramanjeet26@gmail.com. We will respond within 30 days.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">7. Data Retention</h2>
-            <p className="leading-relaxed">We retain your account data for as long as your account is active. Resume analysis data is retained to power your career intelligence features. You may request deletion of your data at any time by contacting us.</p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-foreground mb-3">8. Contact Us</h2>
-            <p className="leading-relaxed">For privacy-related questions, contact us at{' '}
-              <a href="mailto:mishramanjeet26@gmail.com" className="text-primary hover:underline">
-                mishramanjeet26@gmail.com
-              </a>
-            </p>
-          </section>
+        <div className="space-y-4">
+          {sections.map((s, i) => (
+            <motion.div key={s.title}
+              initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: i * 0.05, duration: 0.5 }}
+              className="p-6 rounded-2xl border border-white/5 bg-slate-900/60 hover:border-white/10 transition-colors">
+              <h2 className="text-base font-bold text-white mb-3">{s.title}</h2>
+              {s.body && <p className="text-sm text-slate-400 leading-relaxed">{s.body}</p>}
+              {s.list && (
+                <ul className="space-y-1.5">
+                  {s.list.map(item => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-slate-400">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {s.contact && (
+                <p className="text-sm text-slate-400">For privacy questions, contact us at{' '}
+                  <a href={`mailto:${s.contact}`} className="text-blue-400 hover:underline">{s.contact}</a>
+                </p>
+              )}
+            </motion.div>
+          ))}
         </div>
       </main>
     </div>
