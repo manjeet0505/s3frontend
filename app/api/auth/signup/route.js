@@ -1,15 +1,17 @@
+// frontend/app/api/auth/signup/route.js
+// ─── UPDATED: adds plan/usage/isAdmin fields to new user ─────────────────────
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { normalizeRole } from '../../_utils/auth';
 import { checkRateLimit } from '../../_utils/rateLimit';
+import { DEFAULT_USAGE, } from '../../_utils/checkUsage';
+import { ADMIN_EMAILS } from '../../_utils/planLimits';
 
 const uri = process.env.MONGODB_URI;
 const DB_NAME = process.env.MONGODB_DB;
 
-// ── Allowed roles — NEVER accept anything outside this list ──────────────────
 const ALLOWED_ROLES = ['student', 'mentor'];
-
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
 function validateSignupInput({ name, email, password, phone }) {
@@ -40,7 +42,6 @@ function validateSignupInput({ name, email, password, phone }) {
 
 export async function POST(request) {
   try {
-    // ── Rate limit: 5 signups per IP per hour ─────────────────────────────
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
@@ -57,12 +58,10 @@ export async function POST(request) {
     const body = await request.json();
     const { name, email, password, phone, role } = body;
 
-    // ── CRITICAL: Role whitelist — block admin/superuser/any elevated role ─
     const requestedRole = typeof role === 'string' ? role.trim().toLowerCase() : '';
     const safeRole = ALLOWED_ROLES.includes(requestedRole) ? requestedRole : 'student';
     const normalizedRole = normalizeRole(safeRole);
 
-    // ── Validate input ────────────────────────────────────────────────────
     const validationError = validateSignupInput({ name, email, password, phone });
     if (validationError) {
       return NextResponse.json({ message: validationError }, { status: 400 });
@@ -85,22 +84,33 @@ export async function POST(request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ─── Check if this email is an admin ─────────────────────────────────────
+    const userIsAdmin = ADMIN_EMAILS.includes(normalizedEmail);
 
     const newUser = {
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       password: hashedPassword,
       phone: phone.trim(),
       role: normalizedRole,
       createdAt: new Date(),
       updatedAt: new Date(),
       profile: { avatar: null, bio: '', skills: [], experience: [], education: [] },
+
+      // ── Plan fields (NEW) ──────────────────────────────────────────────────
+      plan: userIsAdmin ? 'elite' : 'free',  // admin gets elite automatically
+      planExpiry: null,                       // null = never expires
+      isAdmin: userIsAdmin,
+
+      // ── Usage tracking (NEW) ──────────────────────────────────────────────
+      usage: { ...DEFAULT_USAGE },
     };
 
     await usersCollection.insertOne(newUser);
     await client.close();
 
-    // ── Never return userId — prevents user ID disclosure (vuln 12.9) ─────
     return NextResponse.json({ message: 'Account created successfully' }, { status: 201 });
   } catch (error) {
     console.error('[Signup] Error:', error);
