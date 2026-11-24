@@ -176,7 +176,7 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: 'spring', bounce: 0.1, duration: 0.4 }}
-            className="fixed top-0 left-0 z-50 flex flex-col h-screen w-64 border-r border-border/60 bg-card/95 backdrop-blur-xl lg:hidden"
+            className="fixed top-0 left-0 z-50 flex flex-col h-[100dvh] w-64 border-r border-border/60 bg-card/95 backdrop-blur-xl lg:hidden"
           >
             {/* Background glow */}
             <div
@@ -201,7 +201,7 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 min-h-0 px-3 py-4 space-y-1 overflow-y-auto">
               {navItems.map((item) => {
                 const active = isActive(item);
                 return (
@@ -232,7 +232,7 @@ function MobileSidebar({ user, onLogout, open, onClose }) {
             </nav>
 
             {/* User + Logout */}
-            <div className="relative px-3 py-4 border-t border-border/40 space-y-2">
+            <div className="relative shrink-0 px-3 pt-4 pb-6 border-t border-border/40 space-y-2">
               {user && (
                 <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary/40">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
