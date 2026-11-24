@@ -760,7 +760,7 @@ function ScanningScreen() {
   return (
     <div style={{
       minHeight: '70vh', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 40, padding: 40
+      alignItems: 'center', justifyContent: 'center', gap: 40, padding: 20,
     }}>
       {/* Animated ring */}
       <div style={{ position: 'relative', width: 120, height: 120 }}>
@@ -781,7 +781,7 @@ function ScanningScreen() {
       </div>
 
       {/* Steps */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 320 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 320 }}>
         {SCAN_STEPS.map((s, i) => (
           <motion.div
             key={i}
@@ -907,10 +907,10 @@ export default function ResumeAnalyzerPage() {
       <div className="glow-orb" style={{ width: 600, height: 600, top: -200, left: -200, background: '#00e5cb' }} />
       <div className="glow-orb" style={{ width: 400, height: 400, bottom: -100, right: -100, background: '#7c3aed' }} />
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '32px 20px' }}>
+      <div className="page-wrap">
 
         {/* ── HEADER ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 40 }}>
+        <div className="page-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {phase === 'results' && (
               <button onClick={() => setPhase('upload')} style={{
@@ -968,8 +968,7 @@ export default function ResumeAnalyzerPage() {
 
               {/* Upload Zone */}
               <div
-                className={`upload-zone ${dragging ? 'drag-over' : ''}`}
-                style={{ padding: '60px 40px', textAlign: 'center' }}
+                className={`upload-zone upload-pad ${dragging ? 'drag-over' : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDrop}
@@ -1095,7 +1094,7 @@ export default function ResumeAnalyzerPage() {
               transition={{ duration: 0.4 }}
             >
               {/* Score + Dimensions Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20, marginBottom: 20 }}>
+             <div className="score-grid">
 
                 {/* Score Ring Card */}
                 <div className="glass-card" style={{
@@ -1146,7 +1145,7 @@ export default function ResumeAnalyzerPage() {
               </div>
 
               {/* Strengths + Critical Fixes */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div className="two-col">
                 {/* Strengths */}
                 <div className="glass-card" style={{ padding: 20 }}>
                   <div className="syne" style={{ fontSize: 12, fontWeight: 700, color: '#10b981',
@@ -1223,7 +1222,7 @@ export default function ResumeAnalyzerPage() {
                     textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 14 }}>
                     Section Analysis · Click "Improve" for AI rewrites
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 12 }}>
                     {d.sections.map((section, i) => (
                       <motion.div key={i}
                         initial={{ opacity: 0, y: 10 }}
